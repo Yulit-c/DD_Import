@@ -34,6 +34,7 @@ from bpy_extras.io_utils import orientation_helper
 from addon_utils import paths, check
 from bpy.path import module_names
 
+import os
 from pathlib import Path
 
 from .debug import (
@@ -179,6 +180,47 @@ class DDFBXIMPORT_WM_import_options(bpy.types.PropertyGroup):
 ---------------------------------------------------------"""
 
 
+class DDFBXIMPORT_OT_built_in_import(bpy.types.Operator):
+    bl_idname = "ddfbx.built_in_import"
+    bl_label = "Built-In Import"
+    bl_description = ""
+    bl_options = {"UNDO"}
+
+    directory: bpy.props.StringProperty(subtype="FILE_PATH", options={"SKIP_SAVE"})
+    files: bpy.props.StringProperty(options={"SKIP_SAVE"})
+
+    def execute(self, context):
+        file_list = [i.strip() for i in self.files[1:-1].split(",")]
+        for i in file_list:
+            file_name = i[1:-1]
+            # logger.debug(file_name)
+            file_path = Path(self.directory).joinpath(file_name)
+            logger.debug(file_path)
+            bpy.ops.import_scene.fbx(filepath=str(file_path))
+            logger.debug(f'Load Complete\n{"":#<70}')
+
+        return {"FINISHED"}
+
+
+class DDFBXIMPORT_OT_better_fbx_import(bpy.types.Operator):
+    bl_idname = "ddfbx.better_fbx_import"
+    bl_label = "Better FBX Import"
+    bl_description = ""
+    bl_options = {"UNDO"}
+
+    directory: bpy.props.StringProperty(subtype="FILE_PATH", options={"SKIP_SAVE"})
+    files: list[str]
+
+    def execute(self, context):
+        for file in self.files:
+            filepath = Path(self.directory).joinpath(file.name)
+            logger.debug(filepath)
+            bpy.ops.better_import.fbx(filepath=str(filepath))
+            logger.debug(f'Load Complete\n{"":#<70}')
+
+        return {"FINISHED"}
+
+
 class DDFBXIMPORT_OT_fbx_import(bpy.types.Operator):
     """Test importer that creates scripts nodes from .txt files"""
 
@@ -196,37 +238,36 @@ class DDFBXIMPORT_OT_fbx_import(bpy.types.Operator):
     def poll(cls, context):
         return context.area and context.area.type == "VIEW_3D"
 
-    def execute(self, context):
-        addon_pref = get_ddfbx_addon_preferences()
-        import os
-
+    def invoke(self, context, event):
         os.system("cls")
-        logger.debug("Execute D&D")
+        # Better FBXがインストールされていない場合はEnumアイテムを0に設定
+        if not "better_fbx" in get_enabled_addon_list():
+            get_ddfbx_addon_preferences().importer = "0"
+        return context.window_manager.invoke_props_dialog(self, width=360)
+
+    def draw(self, context):
+        layout = self.layout
+        match int(get_ddfbx_addon_preferences().importer):
+            case 0:
+                layout.label(text="Built-In Importer")
+            case 1:
+                layout.label(text="Better FBX Importer")
+                pass
+
+    def execute(self, context):
         """The directory property need to be set."""
         if not self.directory:
             return {"CANCELLED"}
 
-        # Better FBXがインストールされていない場合はEnumアイテムを0に設定
-        if not "better_fbx" in get_enabled_addon_list():
-            addon_pref.importer = "0"
-
+        addon_pref = get_ddfbx_addon_preferences()
         selected_importer = addon_pref.importer
-        for file in self.files:
-            """
-            Calls to the operator can set unfiltered file names,
-            ensure the file extension is .txt
-            """
-            filepath = Path(self.directory).joinpath(file.name)
-            logger.debug(filepath)
-
-            match int(selected_importer):
-                case 0:
-                    logger.debug("Mode 0")
-                    bpy.ops.import_scene.fbx(filepath=str(filepath))
-                case 1:
-                    logger.debug("Mode 1")
-                    bpy.ops.better_import.fbx(filepath=str(filepath))
-            logger.debug(f'Load Complete\n{"":#<70}')
+        match int(selected_importer):
+            case 0:
+                logger.debug("Mode 0")
+                bpy.ops.ddfbx.built_in_import(directory=self.directory, files=str(self.files.keys()))
+            case 1:
+                logger.debug("Mode 1")
+                bpy.ops.ddfbx.better_fbx_import(directory=self.directory, files=self.files)
 
         return {"FINISHED"}
 
@@ -256,6 +297,8 @@ class DDFBXIMPORT_FH_fbx_import(bpy.types.FileHandler):
 ---------------------------------------------------------"""
 CLASSES = (
     DDFBXIMPORT_PREF_addon_preference,
+    DDFBXIMPORT_OT_built_in_import,
+    DDFBXIMPORT_OT_better_fbx_import,
     DDFBXIMPORT_OT_fbx_import,
     DDFBXIMPORT_FH_fbx_import,
 )
