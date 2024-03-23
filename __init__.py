@@ -34,7 +34,6 @@ from bpy_extras.io_utils import orientation_helper
 from addon_utils import paths, check
 from bpy.path import module_names
 
-import os
 from pathlib import Path
 
 from .debug import (
@@ -146,7 +145,7 @@ def get_ddfbx_addon_preferences() -> DDFBXIMPORT_PREF_addon_preference:
 ---------------------------------------------------------"""
 
 
-class DDFBXIMPORT_WM_import_options(bpy.types.PropertyGroup):
+class DDFBXIMPORT_ImportOperatorBase(bpy.types.Operator):
     def get_import_presets(self, context) -> list[tuple[str]]:
         items = []
         items.append(("0", "Default", "Default Parameters"))
@@ -155,15 +154,23 @@ class DDFBXIMPORT_WM_import_options(bpy.types.PropertyGroup):
             items.append((str(n), str(i.stem), ""))
         return items
 
+    def get_selected_preset_file(self, context) -> Path:
+        items = DDFBXIMPORT_ImportOperatorBase.get_import_presets(self, context)
+        selected_item = items[int(self.presets_files)][1]
+        source_file = get_preset_directory().joinpath(f"{selected_item}.pres")
+        return source_file
+
     def assign_preset_parameters(self, context):
         if self.presets_files == "0":
-            pass
+            source_file = Path(__file__).parent.joinpath("Default.pres")
         else:
-            pass
+            source_file = DDFBXIMPORT_ImportOperatorBase.get_selected_preset_file(self, context)
+            logger.debug(source_file)
 
-        source_file = get_preset_directory().joinpath(f'{""}.pres')
-        pass
+        with open(source_file, "r") as f:
+            logger.debug(f.read())
 
+    # ---------------------------------------------------------------------------------
     presets_files: bpy.props.EnumProperty(
         name="Presets Files",
         description="",
@@ -180,16 +187,88 @@ class DDFBXIMPORT_WM_import_options(bpy.types.PropertyGroup):
 ---------------------------------------------------------"""
 
 
-class DDFBXIMPORT_OT_built_in_import(bpy.types.Operator):
+class DDFBXIMPORT_OT_create_preset(bpy.types.Operator):
+    bl_idname = "ddfbx.create_preset"
+    bl_label = "Create Preset"
+    bl_description = ""
+    bl_options = {"UNDO", "INTERNAL"}
+
+    file_name: bpy.props.StringProperty(
+        name="File Name",
+        description="",
+        default="",
+    )
+
+    @classmethod
+    def poll(cls, context):
+        return True
+
+    def invoke(self, context, event):
+        return context.window_manager.invoke_props_dialog(self)
+
+    def draw(self, context):
+        layout = self.layout
+        row = layout.row()
+        row.label(text="Preset Name")
+        row.prop(self, "file_name")
+
+    def execute(self, context):
+        preset_dir = get_preset_directory()
+        preset_dir.mkdir(parents=True, exist_ok=True)
+        file_path = preset_dir.joinpath(f"{self.file_name}.pres")
+        with open(file_path, "w") as f:
+            f.write("New Custom Preset File")
+
+        return {"FINISHED"}
+
+
+class DDFBXIMPORT_OT_delete_preset(bpy.types.Operator):
+    bl_idname = "ddfbx.delete_preset"
+    bl_label = "Delete Preset"
+    bl_description = ""
+    bl_options = {"UNDO", "INTERNAL"}
+
+    target_file: bpy.props.StringProperty(
+        name="Target File",
+        description="",
+        default="",
+    )
+
+    @classmethod
+    def poll(cls, context):
+        return True
+
+    def execute(self, context):
+        logger.debug(self.target_file)
+        return {"FINISHED"}
+
+
+class DDFBXIMPORT_OT_built_in_import(DDFBXIMPORT_ImportOperatorBase):
     bl_idname = "ddfbx.built_in_import"
     bl_label = "Built-In Import"
     bl_description = ""
-    bl_options = {"UNDO"}
+    bl_options = {"UNDO", "PRESET"}
 
     directory: bpy.props.StringProperty(subtype="FILE_PATH", options={"SKIP_SAVE"})
     files: bpy.props.StringProperty(options={"SKIP_SAVE"})
 
+    def invoke(self, context, event):
+        logger.debug("Invoke")
+        return context.window_manager.invoke_props_dialog(self, width=360)
+
+    def draw(self, context):
+        layout = self.layout
+        # layout.label(text="Built-In Importer")
+        row = layout.row(align=True)
+        row.prop(self, "presets_files", text="Presets")
+        row.operator(DDFBXIMPORT_OT_create_preset.bl_idname, text="", icon="PLUS")
+        op: DDFBXIMPORT_OT_delete_preset = row.operator(
+            DDFBXIMPORT_OT_delete_preset.bl_idname, text="", icon="REMOVE"
+        )
+        op.target_file = str(self.get_selected_preset_file(context))
+
     def execute(self, context):
+        logger.debug("Execute")
         file_list = [i.strip() for i in self.files[1:-1].split(",")]
         for i in file_list:
             file_name = i[1:-1]
@@ -206,10 +285,18 @@ class DDFBXIMPORT_OT_better_fbx_import(bpy.types.Operator):
     bl_idname = "ddfbx.better_fbx_import"
     bl_label = "Better FBX Import"
     bl_description = ""
-    bl_options = {"UNDO"}
+    bl_options = {"UNDO", "PRESET"}
 
     directory: bpy.props.StringProperty(subtype="FILE_PATH", options={"SKIP_SAVE"})
     files: list[str]
+
+    def invoke(self, context, event):
+        import os
+
+        os.system("cls")
+        # Better FBXがインストールされていない場合はEnumアイテムを0に設定
+        if not "better_fbx" in get_enabled_addon_list():
+            get_ddfbx_addon_preferences().importer = "0"
 
     def execute(self, context):
         for file in self.files:
@@ -238,23 +325,10 @@ class DDFBXIMPORT_OT_fbx_import(bpy.types.Operator):
     def poll(cls, context):
         return context.area and context.area.type == "VIEW_3D"
 
-    def invoke(self, context, event):
-        os.system("cls")
-        # Better FBXがインストールされていない場合はEnumアイテムを0に設定
-        if not "better_fbx" in get_enabled_addon_list():
-            get_ddfbx_addon_preferences().importer = "0"
-        return context.window_manager.invoke_props_dialog(self, width=360)
-
-    def draw(self, context):
-        layout = self.layout
-        match int(get_ddfbx_addon_preferences().importer):
-            case 0:
-                layout.label(text="Built-In Importer")
-            case 1:
-                layout.label(text="Better FBX Importer")
-                pass
-
     def execute(self, context):
+        import os
+
+        os.system("cls")
         """The directory property need to be set."""
         if not self.directory:
             return {"CANCELLED"}
@@ -264,10 +338,14 @@ class DDFBXIMPORT_OT_fbx_import(bpy.types.Operator):
         match int(selected_importer):
             case 0:
                 logger.debug("Mode 0")
-                bpy.ops.ddfbx.built_in_import(directory=self.directory, files=str(self.files.keys()))
+                bpy.ops.ddfbx.built_in_import(
+                    "INVOKE_DEFAULT", directory=self.directory, files=str(self.files.keys())
+                )
             case 1:
                 logger.debug("Mode 1")
-                bpy.ops.ddfbx.better_fbx_import(directory=self.directory, files=self.files)
+                bpy.ops.ddfbx.better_fbx_import(
+                    "INVOKE_DEFAULT", directory=self.directory, files=self.files.keys()
+                )
 
         return {"FINISHED"}
 
@@ -297,6 +375,8 @@ class DDFBXIMPORT_FH_fbx_import(bpy.types.FileHandler):
 ---------------------------------------------------------"""
 CLASSES = (
     DDFBXIMPORT_PREF_addon_preference,
+    DDFBXIMPORT_OT_create_preset,
+    DDFBXIMPORT_OT_delete_preset,
     DDFBXIMPORT_OT_built_in_import,
     DDFBXIMPORT_OT_better_fbx_import,
     DDFBXIMPORT_OT_fbx_import,
