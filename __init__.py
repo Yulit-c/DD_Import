@@ -109,11 +109,17 @@ class DDFBXIMPORT_PREF_addon_preference(bpy.types.AddonPreferences):
         default=0,
     )
 
+    show_popup: bpy.props.BoolProperty(
+        name="Show Popup Import Option",
+        description="",
+        default=True,
+    )
+
     def draw(self, context):
         layout = self.layout
         split_factor = 0.5
 
-        header, panel = layout.panel("DDFBX_Preference", default_closed=False)
+        header, panel = layout.panel("DDFBX_Pref_Importer", default_closed=False)
         header.label(text="Importer")
         if panel:
             row = panel.row(align=True)
@@ -121,6 +127,15 @@ class DDFBXIMPORT_PREF_addon_preference(bpy.types.AddonPreferences):
             sp = row.split(align=True, factor=split_factor)
             sp.label(text="Importer")
             sp.prop(self, "importer", text="")
+
+        header, panel = layout.panel("DDFBX_Pref_Behavior", default_closed=False)
+        header.label(text="Behavior")
+        if panel:
+            row = panel.row(align=True)
+            row.separator(factor=5.0)
+            sp = row.split(align=True, factor=split_factor)
+            sp.label(text="Show Popup")
+            sp.prop(self, "show_popup", text="")
 
 
 def get_ddfbx_addon_preferences() -> DDFBXIMPORT_PREF_addon_preference:
@@ -144,6 +159,17 @@ def get_ddfbx_addon_preferences() -> DDFBXIMPORT_PREF_addon_preference:
 """---------------------------------------------------------
 ------------------------------------------------------------
     Property Group
+------------------------------------------------------------
+---------------------------------------------------------"""
+
+
+class BuiltIn_PropertyGroups:
+    pass
+
+
+"""---------------------------------------------------------
+------------------------------------------------------------
+    Operator
 ------------------------------------------------------------
 ---------------------------------------------------------"""
 
@@ -174,12 +200,16 @@ class DDFBXIMPORT_ImportOperatorBase(bpy.types.Operator):
         with open(source_file, "r") as f:
             logger.debug(f.read())
 
+    # File Handlerから受け取ったファイル名の文字列からファイルパスを生成する
+    def gen_source_file_list(source_file_names: [str]) -> list[str]:
+        file_list = [i.strip() for i in source_file_names[1:-1].split(",")]
+        return file_list
 
-"""---------------------------------------------------------
-------------------------------------------------------------
-    Operator
-------------------------------------------------------------
----------------------------------------------------------"""
+    def gen_source_file_path(source_dir: str, source_file_name: str) -> Path:
+        file_name = source_file_name[1:-1]
+        file_path = Path(source_dir).joinpath(file_name)
+        logger.debug(file_path)
+        return file_path
 
 
 class DDFBXIMPORT_OT_built_in_import(DDFBXIMPORT_ImportOperatorBase):
@@ -497,11 +527,13 @@ class DDFBXIMPORT_OT_built_in_import(DDFBXIMPORT_ImportOperatorBase):
 
     def execute(self, context):
         # File Handlerから受け取ったファイル名の文字列からファイルパスを生成する
-        file_list = [i.strip() for i in self.files[1:-1].split(",")]
+        # file_list = [i.strip() for i in self.files[1:-1].split(",")]
+        file_list = DDFBXIMPORT_OT_built_in_import.gen_source_file_list(self.files)
         for i in file_list:
-            file_name = i[1:-1]
-            file_path = Path(self.directory).joinpath(file_name)
-            logger.debug(file_path)
+            # file_name = i[1:-1]
+            # file_path = Path(self.directory).joinpath(file_name)
+            # logger.debug(file_path)
+            file_path = DDFBXIMPORT_OT_built_in_import.gen_source_file_path(self.directory, i)
 
             # オペレーターのプロパティグループを引数としてインポートオペレーターを呼び出す
             ignore_props = (
@@ -893,11 +925,13 @@ class DDFBXIMPORT_OT_better_fbx_import(bpy.types.Operator):
 
     def execute(self, context):
         # File Handlerから受け取ったファイル名の文字列からファイルパスを生成する
-        file_list = [i.strip() for i in self.files[1:-1].split(",")]
+        # file_list = [i.strip() for i in self.files[1:-1].split(",")]
+        file_list = DDFBXIMPORT_OT_built_in_import.gen_source_file_list(self.files)
         for i in file_list:
-            file_name = i[1:-1]
-            file_path = Path(self.directory).joinpath(file_name)
-            logger.debug(file_path)
+            # file_name = i[1:-1]
+            # file_path = Path(self.directory).joinpath(file_name)
+            # logger.debug(file_path)
+            file_path = DDFBXIMPORT_OT_built_in_import.gen_source_file_path(self.directory, i)
 
             # オペレーターのプロパティグループを引数としてインポートオペレーターを呼び出す
             ignore_props = (
@@ -906,12 +940,6 @@ class DDFBXIMPORT_OT_better_fbx_import(bpy.types.Operator):
             )
             keywords = self.as_keywords(ignore=ignore_props)
             bpy.ops.better_import.fbx(filepath=str(file_path), **keywords)
-            logger.debug(f'Load Complete\n{"":#<70}')
-
-        for file in self.files:
-            filepath = Path(self.directory).joinpath(file.name)
-            logger.debug(filepath)
-            bpy.ops.better_import.fbx(filepath=str(filepath))
             logger.debug(f'Load Complete\n{"":#<70}')
 
         return {"FINISHED"}
@@ -951,14 +979,20 @@ class DDFBXIMPORT_OT_fbx_import(bpy.types.Operator):
         match int(selected_importer):
             case 0:
                 logger.debug("Mode 0")
-                bpy.ops.ddfbx.built_in_import(
-                    "INVOKE_DEFAULT", directory=self.directory, files=str(self.files.keys())
-                )
+                if addon_pref.show_popup:
+                    bpy.ops.ddfbx.built_in_import(
+                        "INVOKE_DEFAULT", directory=self.directory, files=str(self.files.keys())
+                    )
+                else:
+                    bpy.ops.ddfbx.built_in_import(directory=self.directory, files=str(self.files.keys()))
             case 1:
                 logger.debug("Mode 1")
-                bpy.ops.ddfbx.better_fbx_import(
-                    "INVOKE_DEFAULT", directory=self.directory, files=str(self.files.keys())
-                )
+                if addon_pref.show_popup:
+                    bpy.ops.ddfbx.better_fbx_import(
+                        "INVOKE_DEFAULT", directory=self.directory, files=str(self.files.keys())
+                    )
+                else:
+                    bpy.ops.ddfbx.better_fbx_import(directory=self.directory, files=str(self.files.keys()))
 
         return {"FINISHED"}
 
