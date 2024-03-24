@@ -35,6 +35,7 @@ from addon_utils import paths, check
 from bpy.path import module_names
 
 from pathlib import Path
+from typing import Any
 
 from .debug import (
     launch_debug_server,
@@ -163,96 +164,29 @@ def get_ddfbx_addon_preferences() -> DDFBXIMPORT_PREF_addon_preference:
 ---------------------------------------------------------"""
 
 
-class BuiltIn_PropertyGroups:
-    pass
+class PropertyGroupBase:
+    def get_parameters_as_dict(self):
+        dic_op_parameters = {}
+        # 選択されているインポーターに応じたプロパティグループを取得する
+        match int(get_ddfbx_addon_preferences().importer):
+            case 0:
+                importer_prop = get_wm_built_in_property_groups()
+            case 1:
+                importer_prop = get_wm_better_fbx_property_groups()
+        # 取得したプロパティグループの全てのフィールドの値を辞書として取得する
+        [dic_op_parameters.setdefault(k, getattr(importer_prop, k)) for k in [*importer_prop.__annotations__]]
+        return dic_op_parameters
 
-
-"""---------------------------------------------------------
-------------------------------------------------------------
-    Operator
-------------------------------------------------------------
----------------------------------------------------------"""
+    def set_parameters(
+        self, target_object: bpy.types.Operator | bpy.types.PropertyGroup, parameters: dict[Any]
+    ):
+        # 取得したパラメーターをOperatorまたはPropertyGroupの値にセットする｡
+        for k, v in parameters.items():
+            setattr(target_object, k, v)
 
 
 @orientation_helper(axis_forward="-Z", axis_up="Y")
-class DDFBXIMPORT_ImportOperatorBase(bpy.types.Operator):
-    def get_import_presets(self, context) -> list[tuple[str]]:
-        items = []
-        items.append(("0", "Default", "Default Parameters"))
-
-        for n, i in enumerate(get_preset_directory().glob("**/*.pres"), 1):
-            items.append((str(n), str(i.stem), ""))
-        return items
-
-    def get_selected_preset_file(self, context) -> Path:
-        items = DDFBXIMPORT_ImportOperatorBase.get_import_presets(self, context)
-        selected_item = items[int(self.presets_files)][1]
-        source_file = get_preset_directory().joinpath(f"{selected_item}.pres")
-        return source_file
-
-    def assign_preset_parameters(self, context):
-        if self.presets_files == "0":
-            source_file = Path(__file__).parent.joinpath("Default.pres")
-        else:
-            source_file = DDFBXIMPORT_ImportOperatorBase.get_selected_preset_file(self, context)
-            logger.debug(source_file)
-
-        with open(source_file, "r") as f:
-            logger.debug(f.read())
-
-    # File Handlerから受け取ったファイル名の文字列からファイルパスを生成する
-    def gen_source_file_list(source_file_names: [str]) -> list[str]:
-        file_list = [i.strip() for i in source_file_names[1:-1].split(",")]
-        return file_list
-
-    def gen_source_file_path(source_dir: str, source_file_name: str) -> Path:
-        file_name = source_file_name[1:-1]
-        file_path = Path(source_dir).joinpath(file_name)
-        logger.debug(file_path)
-        return file_path
-
-
-class DDFBXIMPORT_OT_built_in_import(DDFBXIMPORT_ImportOperatorBase):
-    bl_idname = "ddfbx.built_in_import"
-    bl_label = "Built-In Import"
-    bl_description = ""
-    bl_options = {"UNDO", "PRESET"}
-
-    # ----------------------------------------------------------
-    #    for File Handler
-    # ----------------------------------------------------------
-    directory: bpy.props.StringProperty(subtype="FILE_PATH", options={"SKIP_SAVE"})
-    files: bpy.props.StringProperty(options={"SKIP_SAVE"})
-
-    # ----------------------------------------------------------
-    #    for UI
-    # ----------------------------------------------------------
-    expand_include: bpy.props.BoolProperty(
-        name="Expand Include",
-        description="",
-        default=True,
-    )
-    expand_transform: bpy.props.BoolProperty(
-        name="Expand Transform",
-        description="",
-        default=True,
-    )
-    expand_orientation: bpy.props.BoolProperty(
-        name="Expand Orienation",
-        description="",
-        default=True,
-    )
-    expand_animation: bpy.props.BoolProperty(
-        name="Expand Animation",
-        description="",
-        default=True,
-    )
-    expand_armature: bpy.props.BoolProperty(
-        name="Expand Armature",
-        description="",
-        default=True,
-    )
-
+class BuiltInPropertyGroups(PropertyGroupBase):
     # ----------------------------------------------------------
     #    for Importer
     # ----------------------------------------------------------
@@ -397,176 +331,8 @@ class DDFBXIMPORT_OT_built_in_import(DDFBXIMPORT_ImportOperatorBase):
         default=True,
     )
 
-    # ----------------------------------------------------------
-    #    Operator Method
-    # ----------------------------------------------------------
-    def invoke(self, context, event):
-        logger.debug("Invoke")
-        return context.window_manager.invoke_props_dialog(self, width=360)
 
-    def draw(self, context):
-        layout = self.layout
-
-        box = layout.box()
-        row = box.row(align=True)
-        if not self.expand_include:
-            row.prop(self, "expand_include", icon="TRIA_RIGHT", icon_only=True, emboss=False)
-            row.separator(factor=2.0)
-            row.label(text="Include")
-        else:
-            row.prop(self, "expand_include", icon="TRIA_DOWN", icon_only=True, emboss=False)
-            row.separator(factor=2.0)
-            row.label(text="Include")
-            row = box.row(align=True)
-            row.separator(factor=3.0)
-            col = row.column()
-
-            col.use_property_split = True
-            col.use_property_decorate = False
-
-            col.prop(self, "use_custom_normals")
-            col.prop(self, "use_subsurf")
-            col.prop(self, "use_custom_props")
-            sub = col.row()
-            sub.enabled = self.use_custom_props
-            sub.prop(self, "use_custom_props_enum_as_string")
-            col.prop(self, "use_image_search")
-            col.prop(self, "colors_type")
-
-        box = layout.box()
-        row = box.row(align=True)
-        if not self.expand_transform:
-            row.prop(self, "expand_transform", icon="TRIA_RIGHT", icon_only=True, emboss=False)
-            row.separator(factor=2.0)
-            row.label(text="Transform")
-        else:
-            row.prop(self, "expand_transform", icon="TRIA_DOWN", icon_only=True, emboss=False)
-            row.separator(factor=2.0)
-            row.label(text="Transform")
-            row = box.row(align=True)
-            row.separator(factor=3.0)
-            col = row.column()
-
-            col.use_property_split = True
-            col.use_property_decorate = False  # No Animation
-
-            col.prop(self, "global_scale")
-            col.prop(self, "decal_offset")
-            row = col.row()
-            row.prop(self, "bake_space_transform")
-            row.label(text="", icon="ERROR")
-            col.prop(self, "use_prepost_rot")
-
-        box = layout.box()
-        row = box.row(align=True)
-        if not self.expand_orientation:
-            row.prop(self, "expand_orientation", icon="TRIA_RIGHT", icon_only=True, emboss=False)
-            row.prop(self, "use_manual_orientation", text="")
-            row.label(text="Manual Orientation")
-        else:
-            row.prop(self, "expand_orientation", icon="TRIA_DOWN", icon_only=True, emboss=False)
-            row.prop(self, "use_manual_orientation", text="")
-            row.label(text="Manual Orientation")
-            row = box.row(align=True)
-            row.separator(factor=3.0)
-            col = row.column()
-
-            col.use_property_split = True
-            col.use_property_decorate = False  # No Animation.
-
-            sub = col.column()
-            sub.enabled = self.use_manual_orientation
-            sub.prop(self, "axis_forward")
-            sub.prop(self, "axis_up")
-
-        box = layout.box()
-        row = box.row(align=True)
-        if not self.expand_animation:
-            row.prop(self, "expand_animation", icon="TRIA_RIGHT", icon_only=True, emboss=False)
-            row.prop(self, "use_anim", text="")
-            row.label(text="Animation")
-        else:
-            row.prop(self, "expand_animation", icon="TRIA_DOWN", icon_only=True, emboss=False)
-            row.prop(self, "use_anim", text="")
-            row.label(text="Animation")
-            row = box.row(align=True)
-            row.separator(factor=3.0)
-            col = row.column()
-
-            col.use_property_split = True
-            col.use_property_decorate = False
-
-            sub = col.column()
-            sub.enabled = self.use_anim
-            sub.prop(self, "anim_offset")
-
-        box = layout.box()
-        row = box.row(align=True)
-        if not self.expand_armature:
-            row.prop(self, "expand_armature", icon="TRIA_RIGHT", icon_only=True, emboss=False)
-            row.separator(2.0)
-            row.label(text="Armature")
-        else:
-            row.label(text="", icon="TRIA_DOWN")
-            row.prop(self, "expand_armature", icon="TRIA_DOWN", icon_only=True, emboss=False)
-            row.label(text="Armature")
-            row = box.row(align=True)
-            row.separator(factor=3.0)
-            col = row.column()
-
-            col.use_property_split = True
-            col.use_property_decorate = False
-
-            col.prop(self, "ignore_leaf_bones")
-            col.prop(self, "force_connect_children")
-            col.prop(self, "automatic_bone_orientation")
-            sub = col.column()
-            sub.enabled = not self.automatic_bone_orientation
-            sub.prop(self, "primary_bone_axis")
-            sub.prop(self, "secondary_bone_axis")
-
-    def execute(self, context):
-        # File Handlerから受け取ったファイル名の文字列からファイルパスを生成する
-        # file_list = [i.strip() for i in self.files[1:-1].split(",")]
-        file_list = DDFBXIMPORT_OT_built_in_import.gen_source_file_list(self.files)
-        for i in file_list:
-            # file_name = i[1:-1]
-            # file_path = Path(self.directory).joinpath(file_name)
-            # logger.debug(file_path)
-            file_path = DDFBXIMPORT_OT_built_in_import.gen_source_file_path(self.directory, i)
-
-            # オペレーターのプロパティグループを引数としてインポートオペレーターを呼び出す
-            ignore_props = (
-                "filter_glob",
-                "directory",
-                "ui_tab",
-                "filepath",
-                "files",
-                "expand_include",
-                "expand_transform",
-                "expand_orientation",
-                "expand_animation",
-                "expand_armature",
-            )
-            keywords = self.as_keywords(ignore=ignore_props)
-            bpy.ops.import_scene.fbx(filepath=str(file_path), **keywords)
-            logger.debug(f'Load Complete\n{"":#<70}')
-
-        return {"FINISHED"}
-
-
-class DDFBXIMPORT_OT_better_fbx_import(bpy.types.Operator):
-    bl_idname = "ddfbx.better_fbx_import"
-    bl_label = "Better FBX Import"
-    bl_description = ""
-    bl_options = {"UNDO", "PRESET"}
-
-    # ----------------------------------------------------------
-    #    for File Handler
-    # ----------------------------------------------------------
-    directory: bpy.props.StringProperty(subtype="FILE_PATH", options={"SKIP_SAVE"})
-    files: bpy.props.StringProperty(options={"SKIP_SAVE"})
-
+class BetterFBXPropertyGroups(PropertyGroupBase):
     # ----------------------------------------------------------
     #    for Importer
     # ----------------------------------------------------------
@@ -846,11 +612,288 @@ class DDFBXIMPORT_OT_better_fbx_import(bpy.types.Operator):
         default="cm",
     )
 
+
+class DDFBXIMPORT_WM_built_in_import_options(bpy.types.PropertyGroup, BuiltInPropertyGroups):
+    pass
+
+
+class DDFBXIMPORT_WM_better_fbx_import_options(bpy.types.PropertyGroup, BetterFBXPropertyGroups):
+    pass
+
+
+class DDFBXIMPORT_WM_import_options_root(bpy.types.PropertyGroup):
+    built_in: bpy.props.PointerProperty(
+        name="Built-In Importer",
+        description="",
+        type=DDFBXIMPORT_WM_built_in_import_options,
+    )
+
+    better_fbx: bpy.props.PointerProperty(
+        name="Better FBX",
+        description="",
+        type=DDFBXIMPORT_WM_better_fbx_import_options,
+    )
+
+
+def get_wm_built_in_property_groups() -> DDFBXIMPORT_WM_built_in_import_options:
+    root_property: DDFBXIMPORT_WM_import_options_root = bpy.context.window_manager.ddfbx_importer
+    importer_prop = root_property.built_in
+    return importer_prop
+
+
+def get_wm_better_fbx_property_groups() -> DDFBXIMPORT_WM_better_fbx_import_options:
+    root_property: DDFBXIMPORT_WM_import_options_root = bpy.context.window_manager.ddfbx_importer
+    importer_prop = root_property.better_fbx
+    return importer_prop
+
+
+"""---------------------------------------------------------
+------------------------------------------------------------
+    Operator
+------------------------------------------------------------
+---------------------------------------------------------"""
+
+
+class DDFBXIMPORT_ImportOperatorBase(bpy.types.Operator):
+
+    # File Handlerから受け取ったファイル名の文字列からファイルパスを生成する
+    def gen_source_file_list(self, source_file_names: [str]) -> list[str]:
+        file_list = [i.strip() for i in source_file_names[1:-1].split(",")]
+        return file_list
+
+    # インポート対象のファイルのパスを生成する
+    def gen_source_file_path(self, source_dir: str, source_file_name: str) -> Path:
+        file_name = source_file_name[1:-1]
+        file_path = Path(source_dir).joinpath(file_name)
+        logger.debug(file_path)
+        return file_path
+
+
+class DDFBXIMPORT_OT_built_in_import(DDFBXIMPORT_ImportOperatorBase, BuiltInPropertyGroups):
+    bl_idname = "ddfbx.built_in_import"
+    bl_label = "Built-In Import"
+    bl_description = ""
+    bl_options = {"UNDO", "PRESET"}
+
+    # ----------------------------------------------------------
+    #    for File Handler
+    # ----------------------------------------------------------
+    directory: bpy.props.StringProperty(subtype="FILE_PATH", options={"SKIP_SAVE"})
+    files: bpy.props.StringProperty(options={"SKIP_SAVE"})
+
+    # ----------------------------------------------------------
+    #    for UI
+    # ----------------------------------------------------------
+    expand_include: bpy.props.BoolProperty(
+        name="Expand Include",
+        description="",
+        default=True,
+    )
+    expand_transform: bpy.props.BoolProperty(
+        name="Expand Transform",
+        description="",
+        default=True,
+    )
+    expand_orientation: bpy.props.BoolProperty(
+        name="Expand Orienation",
+        description="",
+        default=True,
+    )
+    expand_animation: bpy.props.BoolProperty(
+        name="Expand Animation",
+        description="",
+        default=True,
+    )
+    expand_armature: bpy.props.BoolProperty(
+        name="Expand Armature",
+        description="",
+        default=True,
+    )
+
     # ----------------------------------------------------------
     #    Operator Method
     # ----------------------------------------------------------
     def invoke(self, context, event):
         logger.debug("Invoke")
+        # オペレーターに対応するプロパティグループの値を取得する
+        parameters_dict = self.get_parameters_as_dict()
+        # 取得した値をオペレーターのプロパティに値を瀬とする
+        self.set_parameters(self, parameters_dict)
+        return context.window_manager.invoke_props_dialog(self, width=360)
+
+    def draw(self, context):
+        layout = self.layout
+
+        box = layout.box()
+        row = box.row(align=True)
+        if not self.expand_include:
+            row.prop(self, "expand_include", icon="TRIA_RIGHT", icon_only=True, emboss=False)
+            row.separator(factor=2.0)
+            row.label(text="Include")
+        else:
+            row.prop(self, "expand_include", icon="TRIA_DOWN", icon_only=True, emboss=False)
+            row.separator(factor=2.0)
+            row.label(text="Include")
+            row = box.row(align=True)
+            row.separator(factor=3.0)
+            col = row.column()
+
+            col.use_property_split = True
+            col.use_property_decorate = False
+
+            col.prop(self, "use_custom_normals")
+            col.prop(self, "use_subsurf")
+            col.prop(self, "use_custom_props")
+            sub = col.row()
+            sub.enabled = self.use_custom_props
+            sub.prop(self, "use_custom_props_enum_as_string")
+            col.prop(self, "use_image_search")
+            col.prop(self, "colors_type")
+
+        box = layout.box()
+        row = box.row(align=True)
+        if not self.expand_transform:
+            row.prop(self, "expand_transform", icon="TRIA_RIGHT", icon_only=True, emboss=False)
+            row.separator(factor=2.0)
+            row.label(text="Transform")
+        else:
+            row.prop(self, "expand_transform", icon="TRIA_DOWN", icon_only=True, emboss=False)
+            row.separator(factor=2.0)
+            row.label(text="Transform")
+            row = box.row(align=True)
+            row.separator(factor=3.0)
+            col = row.column()
+
+            col.use_property_split = True
+            col.use_property_decorate = False  # No Animation
+
+            col.prop(self, "global_scale")
+            col.prop(self, "decal_offset")
+            row = col.row()
+            row.prop(self, "bake_space_transform")
+            row.label(text="", icon="ERROR")
+            col.prop(self, "use_prepost_rot")
+
+        box = layout.box()
+        row = box.row(align=True)
+        if not self.expand_orientation:
+            row.prop(self, "expand_orientation", icon="TRIA_RIGHT", icon_only=True, emboss=False)
+            row.prop(self, "use_manual_orientation", text="")
+            row.label(text="Manual Orientation")
+        else:
+            row.prop(self, "expand_orientation", icon="TRIA_DOWN", icon_only=True, emboss=False)
+            row.prop(self, "use_manual_orientation", text="")
+            row.label(text="Manual Orientation")
+            row = box.row(align=True)
+            row.separator(factor=3.0)
+            col = row.column()
+
+            col.use_property_split = True
+            col.use_property_decorate = False  # No Animation.
+
+            sub = col.column()
+            sub.enabled = self.use_manual_orientation
+            sub.prop(self, "axis_forward")
+            sub.prop(self, "axis_up")
+
+        box = layout.box()
+        row = box.row(align=True)
+        if not self.expand_animation:
+            row.prop(self, "expand_animation", icon="TRIA_RIGHT", icon_only=True, emboss=False)
+            row.prop(self, "use_anim", text="")
+            row.label(text="Animation")
+        else:
+            row.prop(self, "expand_animation", icon="TRIA_DOWN", icon_only=True, emboss=False)
+            row.prop(self, "use_anim", text="")
+            row.label(text="Animation")
+            row = box.row(align=True)
+            row.separator(factor=3.0)
+            col = row.column()
+
+            col.use_property_split = True
+            col.use_property_decorate = False
+
+            sub = col.column()
+            sub.enabled = self.use_anim
+            sub.prop(self, "anim_offset")
+
+        box = layout.box()
+        row = box.row(align=True)
+        if not self.expand_armature:
+            row.prop(self, "expand_armature", icon="TRIA_RIGHT", icon_only=True, emboss=False)
+            row.separator(2.0)
+            row.label(text="Armature")
+        else:
+            row.label(text="", icon="TRIA_DOWN")
+            row.prop(self, "expand_armature", icon="TRIA_DOWN", icon_only=True, emboss=False)
+            row.label(text="Armature")
+            row = box.row(align=True)
+            row.separator(factor=3.0)
+            col = row.column()
+
+            col.use_property_split = True
+            col.use_property_decorate = False
+
+            col.prop(self, "ignore_leaf_bones")
+            col.prop(self, "force_connect_children")
+            col.prop(self, "automatic_bone_orientation")
+            sub = col.column()
+            sub.enabled = not self.automatic_bone_orientation
+            sub.prop(self, "primary_bone_axis")
+            sub.prop(self, "secondary_bone_axis")
+
+    def execute(self, context):
+        ignore_props = (
+            "filter_glob",
+            "directory",
+            "ui_tab",
+            "filepath",
+            "files",
+            "expand_include",
+            "expand_transform",
+            "expand_orientation",
+            "expand_animation",
+            "expand_armature",
+        )
+        # オペレーターのプロパティの値をWindowManagerのプロパティグループに保存する
+        operator_parameters = self.as_keywords(ignore=ignore_props)
+        built_in_property_group = get_wm_built_in_property_groups()
+        for k, v in operator_parameters.items():
+            setattr(built_in_property_group, k, v)
+        # File Handlerから受け取ったファイル名の文字列からファイルパスを生成する
+        file_list = self.gen_source_file_list(self.files)
+        for i in file_list:
+            file_path = self.gen_source_file_path(self.directory, i)
+
+            # オペレーターのプロパティグループを引数としてインポートオペレーターを呼び出す
+            keywords = self.as_keywords(ignore=ignore_props)
+            bpy.ops.import_scene.fbx(filepath=str(file_path), **keywords)
+            logger.debug(f'Load Complete\n{"":#<70}')
+
+        return {"FINISHED"}
+
+
+class DDFBXIMPORT_OT_better_fbx_import(DDFBXIMPORT_ImportOperatorBase, BetterFBXPropertyGroups):
+    bl_idname = "ddfbx.better_fbx_import"
+    bl_label = "Better FBX Import"
+    bl_description = ""
+    bl_options = {"UNDO", "PRESET"}
+
+    # ----------------------------------------------------------
+    #    for File Handler
+    # ----------------------------------------------------------
+    directory: bpy.props.StringProperty(subtype="FILE_PATH", options={"SKIP_SAVE"})
+    files: bpy.props.StringProperty(options={"SKIP_SAVE"})
+
+    # ----------------------------------------------------------
+    #    Operator Method
+    # ----------------------------------------------------------
+    def invoke(self, context, event):
+        logger.debug("Invoke")
+        # オペレーターに対応するプロパティグループの値を取得する
+        parameters_dict = self.get_parameters_as_dict()
+        # 取得した値をオペレーターのプロパティに値を瀬とする
+        self.set_parameters(self, parameters_dict)
         return context.window_manager.invoke_props_dialog(self, width=360)
 
     def draw(self, context):
@@ -924,20 +967,25 @@ class DDFBXIMPORT_OT_better_fbx_import(bpy.types.Operator):
         box.prop(self, "my_edge_crease_scale")
 
     def execute(self, context):
+        ignore_props = (
+            "directory",
+            "files",
+        )
+        # オペレーターのプロパティの値をWindowManagerのプロパティグループに保存する
+        operator_parameters = self.as_keywords(ignore=ignore_props)
+        better_fbx_property_group = get_wm_better_fbx_property_groups()
+        for k, v in operator_parameters.items():
+            setattr(better_fbx_property_group, k, v)
         # File Handlerから受け取ったファイル名の文字列からファイルパスを生成する
         # file_list = [i.strip() for i in self.files[1:-1].split(",")]
-        file_list = DDFBXIMPORT_OT_built_in_import.gen_source_file_list(self.files)
+        file_list = self.gen_source_file_list(self.files)
         for i in file_list:
             # file_name = i[1:-1]
             # file_path = Path(self.directory).joinpath(file_name)
             # logger.debug(file_path)
-            file_path = DDFBXIMPORT_OT_built_in_import.gen_source_file_path(self.directory, i)
+            file_path = self.gen_source_file_path(self.directory, i)
 
             # オペレーターのプロパティグループを引数としてインポートオペレーターを呼び出す
-            ignore_props = (
-                "directory",
-                "files",
-            )
             keywords = self.as_keywords(ignore=ignore_props)
             bpy.ops.better_import.fbx(filepath=str(file_path), **keywords)
             logger.debug(f'Load Complete\n{"":#<70}')
@@ -973,26 +1021,27 @@ class DDFBXIMPORT_OT_fbx_import(bpy.types.Operator):
         # Better FBXがインストールされていない場合はEnumアイテムを0に設定
         if not "better_fbx" in get_enabled_addon_list():
             get_ddfbx_addon_preferences().importer = "0"
-        # Preferenceで選択されたインポーターに応じたオペレーターを実行する｡
+
+        # Show Popupの値に応じてExecution Contextを定義する
         addon_pref = get_ddfbx_addon_preferences()
         selected_importer = addon_pref.importer
+        if addon_pref.show_popup:
+            exec_context = "INVOKE_DEFAULT"
+        else:
+            exec_context = "EXEC_DEFAULT"
+
+        # Preferenceで選択されたインポーターに応じたオペレーターを実行する｡
         match int(selected_importer):
-            case 0:
+            case 0:  # Built-In
                 logger.debug("Mode 0")
-                if addon_pref.show_popup:
-                    bpy.ops.ddfbx.built_in_import(
-                        "INVOKE_DEFAULT", directory=self.directory, files=str(self.files.keys())
-                    )
-                else:
-                    bpy.ops.ddfbx.built_in_import(directory=self.directory, files=str(self.files.keys()))
-            case 1:
+                bpy.ops.ddfbx.built_in_import(
+                    exec_context, directory=self.directory, files=str(self.files.keys())
+                )
+            case 1:  # Better FBX
                 logger.debug("Mode 1")
-                if addon_pref.show_popup:
-                    bpy.ops.ddfbx.better_fbx_import(
-                        "INVOKE_DEFAULT", directory=self.directory, files=str(self.files.keys())
-                    )
-                else:
-                    bpy.ops.ddfbx.better_fbx_import(directory=self.directory, files=str(self.files.keys()))
+                bpy.ops.ddfbx.better_fbx_import(
+                    exec_context, directory=self.directory, files=str(self.files.keys())
+                )
 
         return {"FINISHED"}
 
@@ -1022,6 +1071,9 @@ class DDFBXIMPORT_FH_fbx_import(bpy.types.FileHandler):
 ---------------------------------------------------------"""
 CLASSES = (
     DDFBXIMPORT_PREF_addon_preference,
+    DDFBXIMPORT_WM_built_in_import_options,
+    DDFBXIMPORT_WM_better_fbx_import_options,
+    DDFBXIMPORT_WM_import_options_root,
     DDFBXIMPORT_OT_built_in_import,
     DDFBXIMPORT_OT_better_fbx_import,
     DDFBXIMPORT_OT_fbx_import,
@@ -1037,12 +1089,17 @@ def register():
             logger.debug(f"{cls.__name__} : already registred")
 
     ## Property Group の登録
+    bpy.types.WindowManager.ddfbx_importer = bpy.props.PointerProperty(
+        type=DDFBXIMPORT_WM_import_options_root
+    )
 
     # デバッグ用
     # launch_debug_server()
 
 
 def unregister():
+    # Property Group の削除
+    del bpy.types.WindowManager.ddfbx_importer
     for cls in CLASSES:
         if hasattr(bpy.types, cls.__name__):
             bpy.utils.unregister_class(cls)
