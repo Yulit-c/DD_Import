@@ -89,77 +89,7 @@ def get_preset_directory() -> Path:
 
 """---------------------------------------------------------
 ------------------------------------------------------------
-    Addon Preference
-------------------------------------------------------------
----------------------------------------------------------"""
-
-
-class DDFBXIMPORT_PREF_addon_preference(bpy.types.AddonPreferences):
-    bl_idname = __package__
-
-    def get_item_list(scene, context) -> list[tuple[str]]:
-        items = [("0", "Built-In", "")]
-        if "better_fbx" in get_enabled_addon_list():
-            items.append(("1", "Better FBX", ""))
-        return items
-
-    importer: bpy.props.EnumProperty(
-        name="Importer",
-        description="Description",
-        items=get_item_list,
-        default=0,
-    )
-
-    show_popup: bpy.props.BoolProperty(
-        name="Show Popup Import Option",
-        description="",
-        default=True,
-    )
-
-    def draw(self, context):
-        layout = self.layout
-        split_factor = 0.5
-
-        header, panel = layout.panel("DDFBX_Pref_Importer", default_closed=False)
-        header.label(text="Importer")
-        if panel:
-            row = panel.row(align=True)
-            row.separator(factor=5.0)
-            sp = row.split(align=True, factor=split_factor)
-            sp.label(text="Importer")
-            sp.prop(self, "importer", text="")
-
-        header, panel = layout.panel("DDFBX_Pref_Behavior", default_closed=False)
-        header.label(text="Behavior")
-        if panel:
-            row = panel.row(align=True)
-            row.separator(factor=5.0)
-            sp = row.split(align=True, factor=split_factor)
-            sp.label(text="Show Popup")
-            sp.prop(self, "show_popup", text="")
-
-
-def get_ddfbx_addon_preferences() -> DDFBXIMPORT_PREF_addon_preference:
-    """
-    アドオンが定義したプリファレンスの変数を取得して使用できるようにする｡
-    自身のパッケージ名からプリファレンスを取得する｡
-
-
-    Returns
-    -------
-    AddonPreferences
-        取得したプリファレンスのインスタンス
-    """
-
-    splitted_package_name = __package__.split(".")[0]
-    addon_preferences = bpy.context.preferences.addons[splitted_package_name].preferences
-
-    return addon_preferences
-
-
-"""---------------------------------------------------------
-------------------------------------------------------------
-    Property Group
+    Base Class
 ------------------------------------------------------------
 ---------------------------------------------------------"""
 
@@ -193,14 +123,14 @@ class BuiltInPropertyGroups(PropertyGroupBase):
     filename_ext = ".fbx"
     filter_glob: bpy.props.StringProperty(default="*.fbx", options={"HIDDEN"})
 
-    ui_tab: bpy.props.EnumProperty(
-        items=(
-            ("MAIN", "Main", "Main basic settings"),
-            ("ARMATURE", "Armatures", "Armature-related settings"),
-        ),
-        name="ui_tab",
-        description="Import options categories",
-    )
+    # ui_tab: bpy.props.EnumProperty(
+    #     items=(
+    #         ("MAIN", "Main", "Main basic settings"),
+    #         ("ARMATURE", "Armatures", "Armature-related settings"),
+    #     ),
+    #     name="ui_tab",
+    #     description="Import options categories",
+    # )
 
     use_manual_orientation: bpy.props.BoolProperty(
         name="Manual Orientation",
@@ -300,7 +230,7 @@ class BuiltInPropertyGroups(PropertyGroupBase):
         description="Try to align the major bone axis with the bone children",
         default=False,
     )
-    primary_bone_axis: bpy.props.EnumProperty(
+    primary_bone_axis_built: bpy.props.EnumProperty(
         name="Primary Bone Axis",
         items=(
             ("X", "X Axis", ""),
@@ -312,7 +242,7 @@ class BuiltInPropertyGroups(PropertyGroupBase):
         ),
         default="Y",
     )
-    secondary_bone_axis: bpy.props.EnumProperty(
+    secondary_bone_axis_built: bpy.props.EnumProperty(
         name="Secondary Bone Axis",
         items=(
             ("X", "X Axis", ""),
@@ -613,6 +543,166 @@ class BetterFBXPropertyGroups(PropertyGroupBase):
     )
 
 
+"""---------------------------------------------------------
+------------------------------------------------------------
+    Addon Preference
+------------------------------------------------------------
+---------------------------------------------------------"""
+
+
+class DDFBXIMPORT_PREF_addon_preference(
+    bpy.types.AddonPreferences,
+    BuiltInPropertyGroups,
+    BetterFBXPropertyGroups,
+):
+    bl_idname = __package__
+
+    def get_item_list(scene, context) -> list[tuple[str]]:
+        items = [("0", "Built-In", "")]
+        if "better_fbx" in get_enabled_addon_list():
+            items.append(("1", "Better FBX", ""))
+        return items
+
+    importer: bpy.props.EnumProperty(
+        name="Importer",
+        description="Description",
+        items=get_item_list,
+        default=0,
+    )
+
+    show_popup: bpy.props.BoolProperty(
+        name="Show Popup Import Option",
+        description="",
+        default=True,
+    )
+
+    def draw(self, context):
+        layout = self.layout
+        split_factor = 0.5
+
+        header, panel = layout.panel("DDFBX_Pref_Importer", default_closed=False)
+        header.label(text="Importer")
+        if panel:
+            row = panel.row(align=True)
+            row.separator(factor=5.0)
+            sp = row.split(align=True, factor=split_factor)
+            sp.label(text="Importer")
+            sp.prop(self, "importer", text="")
+
+        header, panel = layout.panel("DDFBX_Pref_Behavior", default_closed=False)
+        header.label(text="Behavior")
+        if panel:
+            row = panel.row(align=True)
+            row.separator(factor=5.0)
+            sp = row.split(align=True, factor=split_factor)
+            sp.label(text="Show Popup")
+            sp.prop(self, "show_popup", text="")
+
+        # Built-In Importerのデフォルトオプション
+        header, panel_root = layout.panel("DDFBX_Pref_Built-In_Props", default_closed=True)
+        header.label(text="Built-In Default Options")
+        if panel_root:
+            # Include
+            row = panel_root.row(align=True)
+            row.separator(factor=2.0)
+            header, panel = row.panel("DDFBX_Pref_Built-In_Props_Include", default_closed=False)
+            header.label(text="Include")
+            if panel:
+                panel.label(text="")
+                panel.prop(self, "use_custom_normals")
+                panel.prop(self, "use_subsurf")
+                panel.prop(self, "use_custom_props")
+                sub = panel.row()
+                sub.enabled = self.use_custom_props
+                sub.prop(self, "use_custom_props_enum_as_string")
+                panel.prop(self, "use_image_search")
+                panel.prop(self, "colors_type")
+
+            # Transform
+            row = panel_root.row(align=True)
+            row.separator(factor=2.0)
+            header, panel = row.panel("DDFBX_Pref_Built-In_Props_Transform", default_closed=False)
+            header.label(text="Transform")
+            if panel:
+                panel.label(text="")
+                panel.prop(self, "global_scale")
+                panel.prop(self, "decal_offset")
+                row = panel.row()
+                row.prop(self, "bake_space_transform")
+                row.label(text="", icon="ERROR")
+                panel.prop(self, "use_prepost_rot")
+
+            # Manual Orientation
+            row = panel_root.row(align=True)
+            row.separator(factor=2.0)
+            header, panel = row.panel("DDFBX_Pref_Built-In_Props_Orientation", default_closed=False)
+            header.label(text="Manual Orientation")
+            if panel:
+                panel.label(text="")
+                row = panel.row(align=True)
+                row.prop(self, "use_manual_orientation", text="")
+                row.label(text="Manual Orientation")
+                sub = panel.column()
+                sub.enabled = self.use_manual_orientation
+                sub.prop(self, "axis_forward")
+                sub.prop(self, "axis_up")
+
+            # Animation
+            row = panel_root.row(align=True)
+            row.separator(factor=2.0)
+            header, panel = row.panel("DDFBX_Pref_Built-In_Props_Animation", default_closed=False)
+            header.label(text="Animation")
+            if panel:
+                panel.label(text="")
+                row = panel.row(align=True)
+                row.prop(self, "use_anim", text="")
+                row.label(text="Animation")
+                row = panel.row(align=True)
+                row.enabled = self.use_anim
+                row.separator(factor=3.0)
+                row.prop(self, "anim_offset")
+
+            # Armature
+            row = panel_root.row(align=True)
+            row.separator(factor=2.0)
+            header, panel = row.panel("DDFBX_Pref_Built-In_Props_Armature", default_closed=False)
+            header.label(text="Armature")
+            if panel:
+                panel.label(text="")
+                panel.prop(self, "ignore_leaf_bones")
+                panel.prop(self, "force_connect_children")
+                panel.prop(self, "automatic_bone_orientation")
+                sub = panel.column()
+                sub.enabled = self.automatic_bone_orientation
+                sub.prop(self, "primary_bone_axis_built")
+                sub.prop(self, "secondary_bone_axis_built")
+
+
+def get_ddfbx_addon_preferences() -> DDFBXIMPORT_PREF_addon_preference:
+    """
+    アドオンが定義したプリファレンスの変数を取得して使用できるようにする｡
+    自身のパッケージ名からプリファレンスを取得する｡
+
+
+    Returns
+    -------
+    AddonPreferences
+        取得したプリファレンスのインスタンス
+    """
+
+    splitted_package_name = __package__.split(".")[0]
+    addon_preferences = bpy.context.preferences.addons[splitted_package_name].preferences
+
+    return addon_preferences
+
+
+"""---------------------------------------------------------
+------------------------------------------------------------
+    Property Group
+------------------------------------------------------------
+---------------------------------------------------------"""
+
+
 class DDFBXIMPORT_WM_built_in_import_options(bpy.types.PropertyGroup, BuiltInPropertyGroups):
     pass
 
@@ -724,6 +814,7 @@ class DDFBXIMPORT_OT_built_in_import(DDFBXIMPORT_ImportOperatorBase, BuiltInProp
     def draw(self, context):
         layout = self.layout
 
+        # Include
         box = layout.box()
         row = box.row(align=True)
         if not self.expand_include:
@@ -750,6 +841,7 @@ class DDFBXIMPORT_OT_built_in_import(DDFBXIMPORT_ImportOperatorBase, BuiltInProp
             col.prop(self, "use_image_search")
             col.prop(self, "colors_type")
 
+        # Transform
         box = layout.box()
         row = box.row(align=True)
         if not self.expand_transform:
@@ -774,6 +866,7 @@ class DDFBXIMPORT_OT_built_in_import(DDFBXIMPORT_ImportOperatorBase, BuiltInProp
             row.label(text="", icon="ERROR")
             col.prop(self, "use_prepost_rot")
 
+        # Manual Orientation
         box = layout.box()
         row = box.row(align=True)
         if not self.expand_orientation:
@@ -796,6 +889,7 @@ class DDFBXIMPORT_OT_built_in_import(DDFBXIMPORT_ImportOperatorBase, BuiltInProp
             sub.prop(self, "axis_forward")
             sub.prop(self, "axis_up")
 
+        # Animation
         box = layout.box()
         row = box.row(align=True)
         if not self.expand_animation:
@@ -817,6 +911,7 @@ class DDFBXIMPORT_OT_built_in_import(DDFBXIMPORT_ImportOperatorBase, BuiltInProp
             sub.enabled = self.use_anim
             sub.prop(self, "anim_offset")
 
+        # Armature
         box = layout.box()
         row = box.row(align=True)
         if not self.expand_armature:
@@ -839,8 +934,8 @@ class DDFBXIMPORT_OT_built_in_import(DDFBXIMPORT_ImportOperatorBase, BuiltInProp
             col.prop(self, "automatic_bone_orientation")
             sub = col.column()
             sub.enabled = not self.automatic_bone_orientation
-            sub.prop(self, "primary_bone_axis")
-            sub.prop(self, "secondary_bone_axis")
+            sub.prop(self, "primary_bone_axis_built")
+            sub.prop(self, "secondary_bone_axis_built")
 
     def execute(self, context):
         ignore_props = (
