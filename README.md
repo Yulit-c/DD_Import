@@ -4,6 +4,7 @@
 ## Summary
 - Works with Blender 4.1 or higher version
 - FBX file data can be imported by dragging and dropping it from the file browser into the Blender window
+- If you drag and drop multiple FBX files, they will all be imported
 
 ## Feature
 ### Choose Importer
