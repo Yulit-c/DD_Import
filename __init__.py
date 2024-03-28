@@ -1,7 +1,7 @@
 bl_info = {
     "name": "DD FBX Importer",
     "author": "Yu-Lit",
-    "version": (0, 1, 1),
+    "version": (0, 2, 0),
     "blender": (4, 1, 0),
     "location": "",
     "description": "",
@@ -942,10 +942,10 @@ class DDFBXIMPORT_OT_reset_auto_import_parameters(bpy.types.Operator):
 
         match self.target:
             case 0:
-                prop = wm_root_props.pref_built_in
+                prop = wm_root_props.built_in_default
                 target_parameters = addon_pref.built_in
             case 1:
-                prop = wm_root_props.pref_better_fbx
+                prop = wm_root_props.better_fbx_default
                 target_parameters = addon_pref.better_fbx
 
         default_values = {k: getattr(prop, k) for k in prop.__annotations__.keys()}
