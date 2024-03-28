@@ -100,9 +100,9 @@ class PropertyGroupBase(bpy.types.PropertyGroup):
         # 選択されているインポーターに応じたプロパティグループを取得する
         match int(get_ddfbx_addon_preferences().importer):
             case 0:
-                importer_prop = get_wm_built_in_property_groups()
+                importer_prop = get_wm_built_in_property_group()
             case 1:
-                importer_prop = get_wm_better_fbx_property_groups()
+                importer_prop = get_wm_better_fbx_property_group()
         # 取得したプロパティグループの全てのフィールドの値を辞書として取得する
         [dic_op_parameters.setdefault(k, getattr(importer_prop, k)) for k in [*importer_prop.__annotations__]]
         return dic_op_parameters
@@ -122,15 +122,6 @@ class DDFBXIMPORT_BuiltInPropertyGroup(PropertyGroupBase):
     # ----------------------------------------------------------
     filename_ext = ".fbx"
     filter_glob: bpy.props.StringProperty(default="*.fbx", options={"HIDDEN"})
-
-    # ui_tab: bpy.props.EnumProperty(
-    #     items=(
-    #         ("MAIN", "Main", "Main basic settings"),
-    #         ("ARMATURE", "Armatures", "Armature-related settings"),
-    #     ),
-    #     name="ui_tab",
-    #     description="Import options categories",
-    # )
 
     use_manual_orientation: bpy.props.BoolProperty(
         name="Manual Orientation",
@@ -543,19 +534,19 @@ class DDFBXIMPORT_BetterFBXPropertyGroup(PropertyGroupBase):
     )
 
 
+"""---------------------------------------------------------
+------------------------------------------------------------
+    Addon Preference
+------------------------------------------------------------
+---------------------------------------------------------"""
+
+
 class DDFBXIMPORT_WM_built_in_pref_parameters(DDFBXIMPORT_BuiltInPropertyGroup):
     pass
 
 
 class DDFBXIMPORT_WM_better_fbx_pref_parameters(DDFBXIMPORT_BetterFBXPropertyGroup):
     pass
-
-
-"""---------------------------------------------------------
-------------------------------------------------------------
-    Addon Preference
-------------------------------------------------------------
----------------------------------------------------------"""
 
 
 class DDFBXIMPORT_PREF_addon_preference(bpy.types.AddonPreferences, bpy.types.PropertyGroup):
@@ -615,12 +606,20 @@ class DDFBXIMPORT_PREF_addon_preference(bpy.types.AddonPreferences, bpy.types.Pr
             sp.prop(self, "show_popup", text="")
 
         # Built-In Importerのデフォルトオプション
+        row = layout.row()
         built_in_props: DDFBXIMPORT_BuiltInPropertyGroup = self.built_in
-        header, panel_root = layout.panel("DDFBX_Pref_Built-In_Props", default_closed=True)
+        header, panel_root = row.panel("DDFBX_Pref_Built-In_Props", default_closed=True)
         header.label(text="Built-In Auto Import Options")
+        op: DDFBXIMPORT_OT_reset_auto_import_parameters = row.operator(
+            DDFBXIMPORT_OT_reset_auto_import_parameters.bl_idname, text="Reset to Default"
+        )
+        op.target = 0
+
         if panel_root:
+            col = panel_root.column()
+            col.separator(factor=4.0)
             # Include
-            row = panel_root.row(align=True)
+            row = col.row(align=True)
             row.separator(factor=2.0)
             header, panel = row.panel("DDFBX_Pref_Built-In_Props_Include", default_closed=False)
             header.label(text="Include")
@@ -695,11 +694,18 @@ class DDFBXIMPORT_PREF_addon_preference(bpy.types.AddonPreferences, bpy.types.Pr
                 sub.prop(built_in_props, "secondary_bone_axis")
 
         better_fbx_props: DDFBXIMPORT_BetterFBXPropertyGroup = self.better_fbx
-        header, panel_root = layout.panel("DDFBX_Pref_BetterFBX_Props", default_closed=True)
+        row = layout.row()
+        header, panel_root = row.panel("DDFBX_Pref_BetterFBX_Props", default_closed=True)
         header.label(text="BetterFBX Auto Import Options")
+        op: DDFBXIMPORT_OT_reset_auto_import_parameters = row.operator(
+            DDFBXIMPORT_OT_reset_auto_import_parameters.bl_idname, text="Reset to Default"
+        )
+        op.target = 1
         if panel_root:
+            col = panel_root.column()
+            col.separator(factor=4.0)
             # Include
-            row = panel_root.row(align=True)
+            row = col.row(align=True)
             row.separator(factor=2.0)
             header, panel = row.panel("DDFBX_Pref_BetterFBX_Props_Basic", default_closed=False)
             header.label(text="Basic Options")
@@ -817,7 +823,7 @@ def get_ddfbx_addon_preferences() -> DDFBXIMPORT_PREF_addon_preference:
     return addon_preferences
 
 
-def get_auto_import_parameters() -> Any:
+def get_auto_import_parameters() -> dict[str, Any]:
     addon_pref = get_ddfbx_addon_preferences()
     import os
 
@@ -869,17 +875,44 @@ class DDFBXIMPORT_WM_import_options_root(bpy.types.PropertyGroup):
         type=DDFBXIMPORT_WM_built_in_pref_parameters,
     )
 
+    pref_better_fbx: bpy.props.PointerProperty(
+        name="Pref Better Fbx",
+        description="",
+        type=DDFBXIMPORT_WM_better_fbx_pref_parameters,
+    )
 
-def get_wm_built_in_property_groups() -> DDFBXIMPORT_WM_built_in_import_options:
+
+def get_wm_root_property_group() -> DDFBXIMPORT_WM_import_options_root:
     root_property: DDFBXIMPORT_WM_import_options_root = bpy.context.window_manager.ddfbx_importer
-    importer_prop = root_property.built_in
+    return root_property
+
+
+def get_wm_built_in_property_group() -> DDFBXIMPORT_WM_built_in_import_options:
+    importer_prop = get_wm_root_property_group().built_in
     return importer_prop
 
 
-def get_wm_better_fbx_property_groups() -> DDFBXIMPORT_WM_better_fbx_import_options:
-    root_property: DDFBXIMPORT_WM_import_options_root = bpy.context.window_manager.ddfbx_importer
-    importer_prop = root_property.better_fbx
+def get_wm_better_fbx_property_group() -> DDFBXIMPORT_WM_better_fbx_import_options:
+    importer_prop = get_wm_root_property_group().better_fbx
     return importer_prop
+
+
+"""---------------------------------------------------------
+------------------------------------------------------------
+    File Handler
+------------------------------------------------------------
+---------------------------------------------------------"""
+
+
+class DDFBXIMPORT_FH_fbx_import(bpy.types.FileHandler):
+    bl_idname = "DDFBXIMPORT_FH_custom_fbx_import"
+    bl_label = "File Handler for Custom FBX Import"
+    bl_import_operator = "ddfbx.fbx_import"
+    bl_file_extensions = ".fbx"
+
+    @classmethod
+    def poll_drop(cls, context):
+        return context.area and context.area.type == "VIEW_3D"
 
 
 """---------------------------------------------------------
@@ -887,6 +920,39 @@ def get_wm_better_fbx_property_groups() -> DDFBXIMPORT_WM_better_fbx_import_opti
     Operator
 ------------------------------------------------------------
 ---------------------------------------------------------"""
+
+
+class DDFBXIMPORT_OT_reset_auto_import_parameters(bpy.types.Operator):
+    bl_idname = "ddfbx.reset_auto_import_param"
+    bl_label = "Reset Auto  Import Parameters"
+    bl_description = ""
+    bl_options = {"INTERNAL"}
+
+    target: bpy.props.IntProperty(
+        name="Target",
+        description="0: Built-In, 1: Better Fbx",
+        default=0,
+        min=0,
+        max=1,
+    )
+
+    def execute(self, context):
+        addon_pref = get_ddfbx_addon_preferences()
+        wm_root_props = get_wm_root_property_group()
+
+        match self.target:
+            case 0:
+                prop = wm_root_props.pref_built_in
+                target_parameters = addon_pref.built_in
+            case 1:
+                prop = wm_root_props.pref_better_fbx
+                target_parameters = addon_pref.better_fbx
+
+        default_values = {k: getattr(prop, k) for k in prop.__annotations__.keys()}
+        for k, v in default_values.items():
+            setattr(target_parameters, k, v)
+
+        return {"FINISHED"}
 
 
 class DDFBXIMPORT_ImportOperatorBase(bpy.types.Operator):
@@ -908,7 +974,7 @@ class DDFBXIMPORT_OT_built_in_import(DDFBXIMPORT_ImportOperatorBase, DDFBXIMPORT
     bl_idname = "ddfbx.built_in_import"
     bl_label = "Built-In Import"
     bl_description = ""
-    bl_options = {"UNDO", "PRESET"}
+    bl_options = {"UNDO", "INTERNAL", "PRESET"}
 
     # ----------------------------------------------------------
     #    for File Handler
@@ -1099,7 +1165,7 @@ class DDFBXIMPORT_OT_built_in_import(DDFBXIMPORT_ImportOperatorBase, DDFBXIMPORT
             )
             # オペレーターのプロパティの値をWindowManagerのプロパティグループに保存する
             operator_parameters = self.as_keywords(ignore=ignore_props)
-            built_in_property_group = get_wm_built_in_property_groups()
+            built_in_property_group = get_wm_built_in_property_group()
             for k, v in operator_parameters.items():
                 setattr(built_in_property_group, k, v)
             keywords = operator_parameters
@@ -1122,7 +1188,7 @@ class DDFBXIMPORT_OT_better_fbx_import(DDFBXIMPORT_ImportOperatorBase, DDFBXIMPO
     bl_idname = "ddfbx.better_fbx_import"
     bl_label = "Better FBX Import"
     bl_description = ""
-    bl_options = {"UNDO", "PRESET"}
+    bl_options = {"UNDO", "INTERNAL", "PRESET"}
 
     # ----------------------------------------------------------
     #    for File Handler
@@ -1219,7 +1285,7 @@ class DDFBXIMPORT_OT_better_fbx_import(DDFBXIMPORT_ImportOperatorBase, DDFBXIMPO
             )
             # オペレーターのプロパティの値をWindowManagerのプロパティグループに保存する
             operator_parameters = self.as_keywords(ignore=ignore_props)
-            better_fbx_property_group = get_wm_better_fbx_property_groups()
+            better_fbx_property_group = get_wm_better_fbx_property_group()
             for k, v in operator_parameters.items():
                 setattr(better_fbx_property_group, k, v)
             keywords = self.as_keywords(ignore=ignore_props)
@@ -1243,6 +1309,7 @@ class DDFBXIMPORT_OT_fbx_import(bpy.types.Operator):
 
     bl_idname = "ddfbx.fbx_import"
     bl_label = "D&D Import FBX"
+    bl_options = {"INTERNAL"}
 
     """
     This Operator can import multiple .txt files, we need following directory and files
@@ -1293,24 +1360,6 @@ class DDFBXIMPORT_OT_fbx_import(bpy.types.Operator):
 
 """---------------------------------------------------------
 ------------------------------------------------------------
-    File Handler
-------------------------------------------------------------
----------------------------------------------------------"""
-
-
-class DDFBXIMPORT_FH_fbx_import(bpy.types.FileHandler):
-    bl_idname = "DDFBXIMPORT_FH_custom_fbx_import"
-    bl_label = "File Handler for Custom FBX Import"
-    bl_import_operator = "ddfbx.fbx_import"
-    bl_file_extensions = ".fbx"
-
-    @classmethod
-    def poll_drop(cls, context):
-        return context.area and context.area.type == "VIEW_3D"
-
-
-"""---------------------------------------------------------
-------------------------------------------------------------
     REGISTER/UNREGISTER
 ------------------------------------------------------------
 ---------------------------------------------------------"""
@@ -1321,6 +1370,7 @@ CLASSES = (
     DDFBXIMPORT_WM_better_fbx_import_options,
     DDFBXIMPORT_WM_import_options_root,
     DDFBXIMPORT_PREF_addon_preference,
+    DDFBXIMPORT_OT_reset_auto_import_parameters,
     DDFBXIMPORT_OT_built_in_import,
     DDFBXIMPORT_OT_better_fbx_import,
     DDFBXIMPORT_OT_fbx_import,
