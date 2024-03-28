@@ -869,14 +869,14 @@ class DDFBXIMPORT_WM_import_options_root(bpy.types.PropertyGroup):
         type=DDFBXIMPORT_WM_better_fbx_import_options,
     )
 
-    pref_built_in: bpy.props.PointerProperty(
-        name="Pref Built-In",
+    built_in_default: bpy.props.PointerProperty(
+        name="Pref Built-In Default Values",
         description="",
         type=DDFBXIMPORT_WM_built_in_pref_parameters,
     )
 
-    pref_better_fbx: bpy.props.PointerProperty(
-        name="Pref Better Fbx",
+    better_fbx_default: bpy.props.PointerProperty(
+        name="Pref Better Fbx Default Values",
         description="",
         type=DDFBXIMPORT_WM_better_fbx_pref_parameters,
     )
