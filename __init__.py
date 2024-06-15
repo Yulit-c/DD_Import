@@ -805,7 +805,7 @@ class DDFBXIMPORT_PREF_addon_preference(bpy.types.AddonPreferences, bpy.types.Pr
                 panel.prop(better_fbx_props, "my_edge_crease_scale")
 
 
-def get_ddfbx_addon_preferences() -> DDFBXIMPORT_PREF_addon_preference:
+def get_addon_preferences() -> DDFBXIMPORT_PREF_addon_preference:
     """
     アドオンが定義したプリファレンスの変数を取得して使用できるようにする｡
     自身のパッケージ名からプリファレンスを取得する｡
