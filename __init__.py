@@ -2,7 +2,7 @@ bl_info = {
     "name": "DD FBX Importer",
     "author": "Yu-Lit",
     "version": (1, 0, 1),
-    "blender": (5, 1, 0),
+    "blender": (4, 1, 0),
     "location": "",
     "description": "",
     "warning": "",
