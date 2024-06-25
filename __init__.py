@@ -77,7 +77,7 @@ def get_enabled_addon_list():
 
 
 def get_preset_directory() -> Path:
-    importer = get_ddfbx_addon_preferences().importer
+    importer = get_addon_preferences().importer
     match int(importer):
         case 0:
             source_directory = presets_directory.joinpath("BuiltIn")
@@ -98,7 +98,7 @@ class PropertyGroupBase(bpy.types.PropertyGroup):
     def get_parameters_as_dict(self):
         dic_op_parameters = {}
         # 選択されているインポーターに応じたプロパティグループを取得する
-        match int(get_ddfbx_addon_preferences().importer):
+        match int(get_addon_preferences().importer):
             case 0:
                 importer_prop = get_wm_built_in_property_group()
             case 1:
@@ -805,7 +805,7 @@ class DDFBXIMPORT_PREF_addon_preference(bpy.types.AddonPreferences, bpy.types.Pr
                 panel.prop(better_fbx_props, "my_edge_crease_scale")
 
 
-def get_ddfbx_addon_preferences() -> DDFBXIMPORT_PREF_addon_preference:
+def get_addon_preferences() -> DDFBXIMPORT_PREF_addon_preference:
     """
     アドオンが定義したプリファレンスの変数を取得して使用できるようにする｡
     自身のパッケージ名からプリファレンスを取得する｡
@@ -824,7 +824,7 @@ def get_ddfbx_addon_preferences() -> DDFBXIMPORT_PREF_addon_preference:
 
 
 def get_auto_import_parameters() -> dict[str, Any]:
-    addon_pref = get_ddfbx_addon_preferences()
+    addon_pref = get_addon_preferences()
     import os
 
     os.system("cls")
@@ -937,7 +937,7 @@ class DDFBXIMPORT_OT_reset_auto_import_parameters(bpy.types.Operator):
     )
 
     def execute(self, context):
-        addon_pref = get_ddfbx_addon_preferences()
+        addon_pref = get_addon_preferences()
         wm_root_props = get_wm_root_property_group()
 
         match self.target:
@@ -1150,7 +1150,7 @@ class DDFBXIMPORT_OT_built_in_import(DDFBXIMPORT_ImportOperatorBase, DDFBXIMPORT
 
     def execute(self, context):
         # ポップアップUIを表示しない場合はPreferenceからパラメーターを取得する
-        if get_ddfbx_addon_preferences().show_popup:
+        if get_addon_preferences().show_popup:
             ignore_props = (
                 "filter_glob",
                 "directory",
@@ -1278,7 +1278,7 @@ class DDFBXIMPORT_OT_better_fbx_import(DDFBXIMPORT_ImportOperatorBase, DDFBXIMPO
         box.prop(self, "my_edge_crease_scale")
 
     def execute(self, context):
-        if get_ddfbx_addon_preferences().show_popup:
+        if get_addon_preferences().show_popup:
             ignore_props = (
                 "directory",
                 "files",
@@ -1332,10 +1332,10 @@ class DDFBXIMPORT_OT_fbx_import(bpy.types.Operator):
 
         # Better FBXがインストールされていない場合はEnumアイテムを0に設定
         if not "better_fbx" in get_enabled_addon_list():
-            get_ddfbx_addon_preferences().importer = "0"
+            get_addon_preferences().importer = "0"
 
         # Show Popupの値に応じてExecution Contextを定義する
-        addon_pref = get_ddfbx_addon_preferences()
+        addon_pref = get_addon_preferences()
         selected_importer = addon_pref.importer
         if addon_pref.show_popup:
             exec_context = "INVOKE_DEFAULT"
