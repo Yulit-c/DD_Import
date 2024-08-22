@@ -30,7 +30,7 @@
             "handlers": [ "consoleHandler" ],
             "propagate": false
         },
-        "DD_FBX_Importer": {
+        "DD_Import": {
             "level": "DEBUG",
             "handlers": [ "consoleHandler" ],
             "propagate": false

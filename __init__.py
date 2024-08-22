@@ -1,7 +1,7 @@
 bl_info = {
-    "name": "DD FBX Importer",
+    "name": "DD Import",
     "author": "Yu-Lit",
-    "version": (1, 0, 1),
+    "version": (1, 1, 0),
     "blender": (4, 1, 0),
     "location": "",
     "description": "",
@@ -56,7 +56,7 @@ logger = preparating_logger(__name__)
     Variables
 ------------------------------------------------------------
 ---------------------------------------------------------"""
-presets_directory: Path = Path(bpy.utils.resource_path("USER")).joinpath("scripts", "presets", "DDFBXImport")
+presets_directory: Path = Path(bpy.utils.resource_path("USER")).joinpath("scripts", "presets", "DDImport")
 
 
 """---------------------------------------------------------
@@ -116,7 +116,7 @@ class PropertyGroupBase(bpy.types.PropertyGroup):
 
 
 @orientation_helper(axis_forward="-Z", axis_up="Y")
-class DDFBXIMPORT_BuiltInPropertyGroup(PropertyGroupBase):
+class DDIMPORT_BuiltInPropertyGroup(PropertyGroupBase):
     # ----------------------------------------------------------
     #    for Importer
     # ----------------------------------------------------------
@@ -253,7 +253,7 @@ class DDFBXIMPORT_BuiltInPropertyGroup(PropertyGroupBase):
     )
 
 
-class DDFBXIMPORT_BetterFBXPropertyGroup(PropertyGroupBase):
+class DDIMPORT_BetterFBXPropertyGroup(PropertyGroupBase):
     # ----------------------------------------------------------
     #    for Importer
     # ----------------------------------------------------------
@@ -541,15 +541,15 @@ class DDFBXIMPORT_BetterFBXPropertyGroup(PropertyGroupBase):
 ---------------------------------------------------------"""
 
 
-class DDFBXIMPORT_WM_built_in_pref_parameters(DDFBXIMPORT_BuiltInPropertyGroup):
+class DDIMPORT_WM_built_in_pref_parameters(DDIMPORT_BuiltInPropertyGroup):
     pass
 
 
-class DDFBXIMPORT_WM_better_fbx_pref_parameters(DDFBXIMPORT_BetterFBXPropertyGroup):
+class DDIMPORT_WM_better_fbx_pref_parameters(DDIMPORT_BetterFBXPropertyGroup):
     pass
 
 
-class DDFBXIMPORT_PREF_addon_preference(bpy.types.AddonPreferences, bpy.types.PropertyGroup):
+class DDIMPORT_PREF_addon_preference(bpy.types.AddonPreferences, bpy.types.PropertyGroup):
     bl_idname = __package__
 
     def get_item_list(scene, context) -> list[tuple[str]]:
@@ -574,13 +574,13 @@ class DDFBXIMPORT_PREF_addon_preference(bpy.types.AddonPreferences, bpy.types.Pr
     built_in: bpy.props.PointerProperty(
         name="Built-In Options",
         description="",
-        type=DDFBXIMPORT_WM_built_in_pref_parameters,
+        type=DDIMPORT_WM_built_in_pref_parameters,
     )
 
     better_fbx: bpy.props.PointerProperty(
         name="Better FBX Options",
         description="",
-        type=DDFBXIMPORT_WM_better_fbx_pref_parameters,
+        type=DDIMPORT_WM_better_fbx_pref_parameters,
     )
 
     def draw(self, context):
@@ -605,15 +605,17 @@ class DDFBXIMPORT_PREF_addon_preference(bpy.types.AddonPreferences, bpy.types.Pr
             sp.label(text="Show Popup")
             sp.prop(self, "show_popup", text="")
 
-        # Built-In Importerのデフォルトオプション
-        row = layout.row()
-        built_in_props: DDFBXIMPORT_BuiltInPropertyGroup = self.built_in
-        header, panel_root = row.panel("DDFBX_Pref_Built-In_Props", default_closed=True)
-        header.label(text="Built-In Auto Import Options")
-        op: DDFBXIMPORT_OT_reset_auto_import_parameters = row.operator(
-            DDFBXIMPORT_OT_reset_auto_import_parameters.bl_idname, text="Reset to Default"
-        )
-        op.target = 0
+            # ----------------------------------------------------------
+            #    Built-In Importerのデフォルトオプション
+            # ----------------------------------------------------------
+            row = layout.row()
+            built_in_props: DDIMPORT_BuiltInPropertyGroup = self.built_in
+            header, panel_root = row.panel("DDFBX_Pref_Built-In_Props", default_closed=True)
+            header.label(text="Built-In Auto Import Options")
+            op: DDIMPORT_OT_reset_auto_import_parameters = row.operator(
+                DDIMPORT_OT_reset_auto_import_parameters.bl_idname, text="Reset to Default"
+            )
+            op.target = 0
 
         if panel_root:
             col = panel_root.column()
@@ -693,119 +695,123 @@ class DDFBXIMPORT_PREF_addon_preference(bpy.types.AddonPreferences, bpy.types.Pr
                 sub.prop(built_in_props, "primary_bone_axis")
                 sub.prop(built_in_props, "secondary_bone_axis")
 
-        better_fbx_props: DDFBXIMPORT_BetterFBXPropertyGroup = self.better_fbx
-        row = layout.row()
-        header, panel_root = row.panel("DDFBX_Pref_BetterFBX_Props", default_closed=True)
-        header.label(text="BetterFBX Auto Import Options")
-        op: DDFBXIMPORT_OT_reset_auto_import_parameters = row.operator(
-            DDFBXIMPORT_OT_reset_auto_import_parameters.bl_idname, text="Reset to Default"
-        )
-        op.target = 1
-        if panel_root:
-            col = panel_root.column()
-            col.separator(factor=4.0)
-            # Include
-            row = col.row(align=True)
-            row.separator(factor=2.0)
-            header, panel = row.panel("DDFBX_Pref_BetterFBX_Props_Basic", default_closed=False)
-            header.label(text="Basic Options")
-            if panel:
-                panel.label(text="")
-                panel.prop(better_fbx_props, "my_rotation_mode")
-                panel.prop(better_fbx_props, "my_import_normal")
-                panel.prop(better_fbx_props, "use_auto_smooth")
-                panel.prop(better_fbx_props, "my_angle")
-                panel.prop(better_fbx_props, "my_shade_mode")
-                panel.prop(better_fbx_props, "my_fbx_unit")
-                panel.prop(better_fbx_props, "my_scale")
+            # ----------------------------------------------------------
+            #    Better FBX Importerのデフォルトオプション
+            # ----------------------------------------------------------
+            if "better_fbx" in get_enabled_addon_list():
+                better_fbx_props: DDIMPORT_BetterFBXPropertyGroup = self.better_fbx
+                row = layout.row()
+                header, panel_root = row.panel("DDFBX_Pref_BetterFBX_Props", default_closed=True)
+                header.label(text="BetterFBX Auto Import Options")
+                op: DDIMPORT_OT_reset_auto_import_parameters = row.operator(
+                    DDIMPORT_OT_reset_auto_import_parameters.bl_idname, text="Reset to Default"
+                )
+                op.target = 1
+                if panel_root:
+                    col = panel_root.column()
+                    col.separator(factor=4.0)
+                    # Include
+                    row = col.row(align=True)
+                    row.separator(factor=2.0)
+                    header, panel = row.panel("DDFBX_Pref_BetterFBX_Props_Basic", default_closed=False)
+                    header.label(text="Basic Options")
+                    if panel:
+                        panel.label(text="")
+                        panel.prop(better_fbx_props, "my_rotation_mode")
+                        panel.prop(better_fbx_props, "my_import_normal")
+                        panel.prop(better_fbx_props, "use_auto_smooth")
+                        panel.prop(better_fbx_props, "my_angle")
+                        panel.prop(better_fbx_props, "my_shade_mode")
+                        panel.prop(better_fbx_props, "my_fbx_unit")
+                        panel.prop(better_fbx_props, "my_scale")
 
-            row = panel_root.row(align=True)
-            row.separator(factor=2.0)
-            header, panel = row.panel("DDFBX_Pref_BetterFBX_Props_Blender", default_closed=False)
-            header.label(text="Blender Options")
-            if panel:
-                panel.label(text="")
-                panel.prop(better_fbx_props, "use_optimize_for_blender")
-                row = panel.row()
-                row.enabled = better_fbx_props.use_optimize_for_blender
-                row.prop(better_fbx_props, "use_reset_mesh_origin")
-                row = panel.row()
-                row.enabled = better_fbx_props.use_optimize_for_blender
-                row.prop(better_fbx_props, "use_reset_mesh_rotation")
+                    row = panel_root.row(align=True)
+                    row.separator(factor=2.0)
+                    header, panel = row.panel("DDFBX_Pref_BetterFBX_Props_Blender", default_closed=False)
+                    header.label(text="Blender Options")
+                    if panel:
+                        panel.label(text="")
+                        panel.prop(better_fbx_props, "use_optimize_for_blender")
+                        row = panel.row()
+                        row.enabled = better_fbx_props.use_optimize_for_blender
+                        row.prop(better_fbx_props, "use_reset_mesh_origin")
+                        row = panel.row()
+                        row.enabled = better_fbx_props.use_optimize_for_blender
+                        row.prop(better_fbx_props, "use_reset_mesh_rotation")
 
-            row = panel_root.row(align=True)
-            row.separator(factor=2.0)
-            header, panel = row.panel("DDFBX_Pref_BetterFBX_Props_Bone", default_closed=False)
-            header.label(text="Bone Options")
-            if panel:
-                panel.label(text="")
-                panel.prop(better_fbx_props, "use_auto_bone_orientation")
-                row = panel.row()
-                row.enabled = better_fbx_props.use_auto_bone_orientation
-                row.prop(better_fbx_props, "primary_bone_axis")
-                row = panel.row()
-                row.enabled = better_fbx_props.use_auto_bone_orientation
-                row.prop(better_fbx_props, "secondary_bone_axis")
-                row = panel.row()
-                row.enabled = better_fbx_props.use_auto_bone_orientation
-                row.prop(better_fbx_props, "my_calculate_roll")
-                panel.prop(better_fbx_props, "my_bone_length")
-                panel.prop(better_fbx_props, "my_leaf_bone")
-                panel.prop(better_fbx_props, "use_detect_deform_bone")
-                panel.prop(better_fbx_props, "use_fix_bone_poses")
-                panel.prop(better_fbx_props, "use_fix_attributes")
-                panel.prop(better_fbx_props, "use_only_deform_bones")
+                    row = panel_root.row(align=True)
+                    row.separator(factor=2.0)
+                    header, panel = row.panel("DDFBX_Pref_BetterFBX_Props_Bone", default_closed=False)
+                    header.label(text="Bone Options")
+                    if panel:
+                        panel.label(text="")
+                        panel.prop(better_fbx_props, "use_auto_bone_orientation")
+                        row = panel.row()
+                        row.enabled = better_fbx_props.use_auto_bone_orientation
+                        row.prop(better_fbx_props, "primary_bone_axis")
+                        row = panel.row()
+                        row.enabled = better_fbx_props.use_auto_bone_orientation
+                        row.prop(better_fbx_props, "secondary_bone_axis")
+                        row = panel.row()
+                        row.enabled = better_fbx_props.use_auto_bone_orientation
+                        row.prop(better_fbx_props, "my_calculate_roll")
+                        panel.prop(better_fbx_props, "my_bone_length")
+                        panel.prop(better_fbx_props, "my_leaf_bone")
+                        panel.prop(better_fbx_props, "use_detect_deform_bone")
+                        panel.prop(better_fbx_props, "use_fix_bone_poses")
+                        panel.prop(better_fbx_props, "use_fix_attributes")
+                        panel.prop(better_fbx_props, "use_only_deform_bones")
 
-            row = panel_root.row(align=True)
-            row.separator(factor=2.0)
-            header, panel = row.panel("DDFBX_Pref_BetterFBX_Props_Animation", default_closed=False)
-            header.label(text="Animation Options")
-            if panel:
-                panel.label(text="")
-                panel.prop(better_fbx_props, "use_animation")
-                panel.prop(better_fbx_props, "use_attach_to_selected_armature")
-                panel.prop(better_fbx_props, "my_animation_offset")
-                panel.prop(better_fbx_props, "use_animation_prefix")
+                    row = panel_root.row(align=True)
+                    row.separator(factor=2.0)
+                    header, panel = row.panel("DDFBX_Pref_BetterFBX_Props_Animation", default_closed=False)
+                    header.label(text="Animation Options")
+                    if panel:
+                        panel.label(text="")
+                        panel.prop(better_fbx_props, "use_animation")
+                        panel.prop(better_fbx_props, "use_attach_to_selected_armature")
+                        panel.prop(better_fbx_props, "my_animation_offset")
+                        panel.prop(better_fbx_props, "use_animation_prefix")
 
-            row = panel_root.row(align=True)
-            row.separator(factor=2.0)
-            header, panel = row.panel("DDFBX_Pref_BetterFBX_Props_VertAnim", default_closed=False)
-            header.label(text="Vertex Animation Options")
-            if panel:
-                panel.label(text="")
-                panel.prop(better_fbx_props, "use_vertex_animation")
+                    row = panel_root.row(align=True)
+                    row.separator(factor=2.0)
+                    header, panel = row.panel("DDFBX_Pref_BetterFBX_Props_VertAnim", default_closed=False)
+                    header.label(text="Vertex Animation Options")
+                    if panel:
+                        panel.label(text="")
+                        panel.prop(better_fbx_props, "use_vertex_animation")
 
-            row = panel_root.row(align=True)
-            row.separator(factor=2.0)
-            header, panel = row.panel("DDFBX_Pref_BetterFBX_Props_Material", default_closed=False)
-            header.label(text="Material Options")
-            if panel:
-                panel.label(text="")
-                panel.prop(better_fbx_props, "use_import_materials")
+                    row = panel_root.row(align=True)
+                    row.separator(factor=2.0)
+                    header, panel = row.panel("DDFBX_Pref_BetterFBX_Props_Material", default_closed=False)
+                    header.label(text="Material Options")
+                    if panel:
+                        panel.label(text="")
+                        panel.prop(better_fbx_props, "use_import_materials")
 
-            row = panel_root.row(align=True)
-            row.separator(factor=2.0)
-            header, panel = row.panel("DDFBX_Pref_BetterFBX_Props_Mesh", default_closed=False)
-            header.label(text="Mesh Options")
-            if panel:
-                panel.label(text="")
-                panel.prop(better_fbx_props, "use_pivot")
-                panel.prop(better_fbx_props, "use_triangulate")
-                panel.prop(better_fbx_props, "use_rename_by_filename")
-                panel.prop(better_fbx_props, "use_fix_mesh_scaling")
+                    row = panel_root.row(align=True)
+                    row.separator(factor=2.0)
+                    header, panel = row.panel("DDFBX_Pref_BetterFBX_Props_Mesh", default_closed=False)
+                    header.label(text="Mesh Options")
+                    if panel:
+                        panel.label(text="")
+                        panel.prop(better_fbx_props, "use_pivot")
+                        panel.prop(better_fbx_props, "use_triangulate")
+                        panel.prop(better_fbx_props, "use_rename_by_filename")
+                        panel.prop(better_fbx_props, "use_fix_mesh_scaling")
 
-            row = panel_root.row(align=True)
-            row.separator(factor=2.0)
-            header, panel = row.panel("DDFBX_Pref_BetterFBX_Props_Edge", default_closed=False)
-            header.label(text="Edge Options")
-            if panel:
-                panel.label(text="")
-                panel.prop(better_fbx_props, "my_edge_smoothing")
-                panel.prop(better_fbx_props, "use_edge_crease")
-                panel.prop(better_fbx_props, "my_edge_crease_scale")
+                    row = panel_root.row(align=True)
+                    row.separator(factor=2.0)
+                    header, panel = row.panel("DDFBX_Pref_BetterFBX_Props_Edge", default_closed=False)
+                    header.label(text="Edge Options")
+                    if panel:
+                        panel.label(text="")
+                        panel.prop(better_fbx_props, "my_edge_smoothing")
+                        panel.prop(better_fbx_props, "use_edge_crease")
+                        panel.prop(better_fbx_props, "my_edge_crease_scale")
 
 
-def get_addon_preferences() -> DDFBXIMPORT_PREF_addon_preference:
+def get_addon_preferences() -> DDIMPORT_PREF_addon_preference:
     """
     アドオンが定義したプリファレンスの変数を取得して使用できるようにする｡
     自身のパッケージ名からプリファレンスを取得する｡
@@ -825,9 +831,6 @@ def get_addon_preferences() -> DDFBXIMPORT_PREF_addon_preference:
 
 def get_auto_import_parameters() -> dict[str, Any]:
     addon_pref = get_addon_preferences()
-    import os
-
-    os.system("cls")
     match int(addon_pref.importer):
         case 0:
             import_parameters = addon_pref.built_in
@@ -848,51 +851,51 @@ def get_auto_import_parameters() -> dict[str, Any]:
 ---------------------------------------------------------"""
 
 
-class DDFBXIMPORT_WM_built_in_import_options(DDFBXIMPORT_BuiltInPropertyGroup):
+class DDIMPORT_WM_built_in_import_options(DDIMPORT_BuiltInPropertyGroup):
     pass
 
 
-class DDFBXIMPORT_WM_better_fbx_import_options(DDFBXIMPORT_BetterFBXPropertyGroup):
+class DDIMPORT_WM_better_fbx_import_options(DDIMPORT_BetterFBXPropertyGroup):
     pass
 
 
-class DDFBXIMPORT_WM_import_options_root(bpy.types.PropertyGroup):
+class DDIMPORT_WM_import_options_root(bpy.types.PropertyGroup):
     built_in: bpy.props.PointerProperty(
         name="Built-In Importer",
         description="",
-        type=DDFBXIMPORT_WM_built_in_import_options,
+        type=DDIMPORT_WM_built_in_import_options,
     )
 
     better_fbx: bpy.props.PointerProperty(
         name="Better FBX",
         description="",
-        type=DDFBXIMPORT_WM_better_fbx_import_options,
+        type=DDIMPORT_WM_better_fbx_import_options,
     )
 
     built_in_default: bpy.props.PointerProperty(
         name="Pref Built-In Default Values",
         description="",
-        type=DDFBXIMPORT_WM_built_in_pref_parameters,
+        type=DDIMPORT_WM_built_in_pref_parameters,
     )
 
     better_fbx_default: bpy.props.PointerProperty(
         name="Pref Better Fbx Default Values",
         description="",
-        type=DDFBXIMPORT_WM_better_fbx_pref_parameters,
+        type=DDIMPORT_WM_better_fbx_pref_parameters,
     )
 
 
-def get_wm_root_property_group() -> DDFBXIMPORT_WM_import_options_root:
-    root_property: DDFBXIMPORT_WM_import_options_root = bpy.context.window_manager.ddfbx_importer
+def get_wm_root_property_group() -> DDIMPORT_WM_import_options_root:
+    root_property: DDIMPORT_WM_import_options_root = bpy.context.window_manager.ddfbx_importer
     return root_property
 
 
-def get_wm_built_in_property_group() -> DDFBXIMPORT_WM_built_in_import_options:
+def get_wm_built_in_property_group() -> DDIMPORT_WM_built_in_import_options:
     importer_prop = get_wm_root_property_group().built_in
     return importer_prop
 
 
-def get_wm_better_fbx_property_group() -> DDFBXIMPORT_WM_better_fbx_import_options:
+def get_wm_better_fbx_property_group() -> DDIMPORT_WM_better_fbx_import_options:
     importer_prop = get_wm_root_property_group().better_fbx
     return importer_prop
 
@@ -904,11 +907,11 @@ def get_wm_better_fbx_property_group() -> DDFBXIMPORT_WM_better_fbx_import_optio
 ---------------------------------------------------------"""
 
 
-class DDFBXIMPORT_FH_fbx_import(bpy.types.FileHandler):
-    bl_idname = "DDFBXIMPORT_FH_custom_fbx_import"
+class DDIMPORT_FH_import(bpy.types.FileHandler):
+    bl_idname = "DDIMPORT_FH_custom_fbx_import"
     bl_label = "File Handler for Custom FBX Import"
-    bl_import_operator = "ddfbx.fbx_import"
-    bl_file_extensions = ".fbx"
+    bl_import_operator = "dd_import.import"
+    bl_file_extensions = ".fbx;.vrm"
 
     @classmethod
     def poll_drop(cls, context):
@@ -922,8 +925,8 @@ class DDFBXIMPORT_FH_fbx_import(bpy.types.FileHandler):
 ---------------------------------------------------------"""
 
 
-class DDFBXIMPORT_OT_reset_auto_import_parameters(bpy.types.Operator):
-    bl_idname = "ddfbx.reset_auto_import_param"
+class DDIMPORT_OT_reset_auto_import_parameters(bpy.types.Operator):
+    bl_idname = "ddimport.reset_auto_import_param"
     bl_label = "Reset Auto  Import Parameters"
     bl_description = ""
     bl_options = {"INTERNAL"}
@@ -955,7 +958,7 @@ class DDFBXIMPORT_OT_reset_auto_import_parameters(bpy.types.Operator):
         return {"FINISHED"}
 
 
-class DDFBXIMPORT_ImportOperatorBase(bpy.types.Operator):
+class DDIMPORT_ImportOperatorBase(bpy.types.Operator):
 
     # File Handlerから受け取ったファイル名の文字列からファイルパスを生成する
     def gen_source_file_list(self, source_file_names: [str]) -> list[str]:
@@ -963,15 +966,15 @@ class DDFBXIMPORT_ImportOperatorBase(bpy.types.Operator):
         return file_list
 
     # インポート対象のファイルのパスを生成する
-    def gen_source_file_path(self, source_dir: str, source_file_name: str) -> Path:
+    def gen_source_file_path(self, source_dir: str, source_file_name: str) -> str:
         file_name = source_file_name[1:-1]
         file_path = Path(source_dir).joinpath(file_name)
-        logger.debug(file_path)
+        file_path = str(file_path)
         return file_path
 
 
-class DDFBXIMPORT_OT_built_in_import(DDFBXIMPORT_ImportOperatorBase, DDFBXIMPORT_BuiltInPropertyGroup):
-    bl_idname = "ddfbx.built_in_import"
+class DDIMPORT_OT_built_in_import(DDIMPORT_ImportOperatorBase, DDIMPORT_BuiltInPropertyGroup):
+    bl_idname = "ddimport.built_in_import"
     bl_label = "Built-In Import"
     bl_description = ""
     bl_options = {"UNDO", "INTERNAL", "PRESET"}
@@ -1178,14 +1181,14 @@ class DDFBXIMPORT_OT_built_in_import(DDFBXIMPORT_ImportOperatorBase, DDFBXIMPORT
             file_path = self.gen_source_file_path(self.directory, i)
 
             # オペレーターのプロパティグループを引数としてインポートオペレーターを呼び出す
-            bpy.ops.import_scene.fbx(filepath=str(file_path), **keywords)
+            bpy.ops.import_scene.fbx(filepath=file_path, **keywords)
             logger.debug(f'Load Complete\n{"":#<70}')
 
         return {"FINISHED"}
 
 
-class DDFBXIMPORT_OT_better_fbx_import(DDFBXIMPORT_ImportOperatorBase, DDFBXIMPORT_BetterFBXPropertyGroup):
-    bl_idname = "ddfbx.better_fbx_import"
+class DDIMPORT_OT_better_fbx_import(DDIMPORT_ImportOperatorBase, DDIMPORT_BetterFBXPropertyGroup):
+    bl_idname = "ddimport.better_fbx_import"
     bl_label = "Better FBX Import"
     bl_description = ""
     bl_options = {"UNDO", "INTERNAL", "PRESET"}
@@ -1298,25 +1301,50 @@ class DDFBXIMPORT_OT_better_fbx_import(DDFBXIMPORT_ImportOperatorBase, DDFBXIMPO
             file_path = self.gen_source_file_path(self.directory, i)
 
             # オペレーターのプロパティグループを引数としてインポートオペレーターを呼び出す
-            bpy.ops.better_import.fbx(filepath=str(file_path), **keywords)
+            bpy.ops.better_import.fbx(filepath=file_path, **keywords)
             logger.debug(f'Load Complete\n{"":#<70}')
 
         return {"FINISHED"}
 
 
-class DDFBXIMPORT_OT_fbx_import(bpy.types.Operator):
-    """Test importer that creates scripts nodes from .txt files"""
+class DDIMPORT_OT_vrm_import(DDIMPORT_ImportOperatorBase):
+    bl_idname = "ddimport.vrm"
+    bl_label = "VRM Import"
+    bl_description = ""
+    bl_options = {"UNDO", "INTERNAL", "PRESET"}
 
-    bl_idname = "ddfbx.fbx_import"
-    bl_label = "D&D Import FBX"
+    # ----------------------------------------------------------
+    #    for File Handler
+    # ----------------------------------------------------------
+    directory: bpy.props.StringProperty(subtype="FILE_PATH", options={"SKIP_SAVE"})
+    files: bpy.props.StringProperty(options={"SKIP_SAVE"})
+
+    # ----------------------------------------------------------
+    #    Operator Method
+    # ----------------------------------------------------------
+
+    def execute(self, context):
+        # File Handlerから受け取ったファイル名の文字列からファイルパスを生成する
+        file_list = self.gen_source_file_list(self.files)
+        for i in file_list:
+            file_path = self.gen_source_file_path(self.directory, i)
+            bpy.ops.import_scene.vrm(filepath=file_path, use_addon_preferences=True)
+            logger.debug(f'Load Complete\n{"":#<70}')
+
+        return {"FINISHED"}
+
+
+class DDIMPORT_OT_import(bpy.types.Operator):
+
+    bl_idname = "dd_import.import"
+    bl_label = "D&D Import"
     bl_options = {"INTERNAL"}
 
-    """
-    This Operator can import multiple .txt files, we need following directory and files
-    properties that the file handler will use to set files path data
-    """
     directory: bpy.props.StringProperty(subtype="FILE_PATH", options={"SKIP_SAVE"})
     files: bpy.props.CollectionProperty(type=bpy.types.OperatorFileListElement, options={"SKIP_SAVE"})
+
+    fbx_files: list[str] = []
+    vrm_files: list[str] = []
 
     @classmethod
     def poll(cls, context):
@@ -1326,7 +1354,15 @@ class DDFBXIMPORT_OT_fbx_import(bpy.types.Operator):
         import os
 
         os.system("cls")
-        """The directory property need to be set."""
+        for i in self.files.keys():
+            i: str
+            extension = i.split(".")[1].lower()
+            match extension:
+                case "fbx":
+                    self.fbx_files.append(i)
+                case "vrm":
+                    self.vrm_files.append(i)
+
         if not self.directory:
             return {"CANCELLED"}
 
@@ -1343,17 +1379,21 @@ class DDFBXIMPORT_OT_fbx_import(bpy.types.Operator):
             exec_context = "EXEC_DEFAULT"
 
         # Preferenceで選択されたインポーターに応じたオペレーターを実行する｡
-        match int(selected_importer):
-            case 0:  # Built-In
-                logger.debug("Mode 0")
-                bpy.ops.ddfbx.built_in_import(
-                    exec_context, directory=self.directory, files=str(self.files.keys())
-                )
-            case 1:  # Better FBX
-                logger.debug("Mode 1")
-                bpy.ops.ddfbx.better_fbx_import(
-                    exec_context, directory=self.directory, files=str(self.files.keys())
-                )
+        if self.fbx_files:
+            logger.debug(f"\n{'':#>10}\nFBX Import\n{'':#>10}")
+            match int(selected_importer):
+                case 0:  # Built-In
+                    bpy.ops.ddimport.built_in_import(
+                        exec_context, directory=self.directory, files=str(self.fbx_files)
+                    )
+                case 1:  # Better FBX
+                    bpy.ops.ddimport.better_fbx_import(
+                        exec_context, directory=self.directory, files=str(self.fbx_files)
+                    )
+
+        if self.vrm_files:
+            logger.debug(f"\n{'':#>10}\n\VRM Import\n{'':#>10}")
+            bpy.ops.ddimport.vrm(directory=self.directory, files=str(self.vrm_files))
 
         return {"FINISHED"}
 
@@ -1364,17 +1404,18 @@ class DDFBXIMPORT_OT_fbx_import(bpy.types.Operator):
 ------------------------------------------------------------
 ---------------------------------------------------------"""
 CLASSES = (
-    DDFBXIMPORT_WM_built_in_pref_parameters,
-    DDFBXIMPORT_WM_better_fbx_pref_parameters,
-    DDFBXIMPORT_WM_built_in_import_options,
-    DDFBXIMPORT_WM_better_fbx_import_options,
-    DDFBXIMPORT_WM_import_options_root,
-    DDFBXIMPORT_PREF_addon_preference,
-    DDFBXIMPORT_OT_reset_auto_import_parameters,
-    DDFBXIMPORT_OT_built_in_import,
-    DDFBXIMPORT_OT_better_fbx_import,
-    DDFBXIMPORT_OT_fbx_import,
-    DDFBXIMPORT_FH_fbx_import,
+    DDIMPORT_WM_built_in_pref_parameters,
+    DDIMPORT_WM_better_fbx_pref_parameters,
+    DDIMPORT_WM_built_in_import_options,
+    DDIMPORT_WM_better_fbx_import_options,
+    DDIMPORT_WM_import_options_root,
+    DDIMPORT_PREF_addon_preference,
+    DDIMPORT_OT_reset_auto_import_parameters,
+    DDIMPORT_OT_built_in_import,
+    DDIMPORT_OT_better_fbx_import,
+    DDIMPORT_OT_vrm_import,
+    DDIMPORT_OT_import,
+    DDIMPORT_FH_import,
 )
 
 
@@ -1386,9 +1427,7 @@ def register():
             logger.debug(f"{cls.__name__} : already registred")
 
     ## Property Group の登録
-    bpy.types.WindowManager.ddfbx_importer = bpy.props.PointerProperty(
-        type=DDFBXIMPORT_WM_import_options_root
-    )
+    bpy.types.WindowManager.ddfbx_importer = bpy.props.PointerProperty(type=DDIMPORT_WM_import_options_root)
 
     # デバッグ用
     # launch_debug_server()

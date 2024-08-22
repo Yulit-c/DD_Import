@@ -1,4 +1,4 @@
-# DD FBX Importer
+# DD FBX Import
 ![Thumbnail](https://raw.githubusercontent.com/Yulit-c/DD_FBX_Importer/vault/Images/thumbnail_00.jpg)
 
 ## Summary
