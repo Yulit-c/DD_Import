@@ -886,7 +886,7 @@ class DDIMPORT_WM_import_options_root(bpy.types.PropertyGroup):
 
 
 def get_wm_root_property_group() -> DDIMPORT_WM_import_options_root:
-    root_property: DDIMPORT_WM_import_options_root = bpy.context.window_manager.ddfbx_importer
+    root_property: DDIMPORT_WM_import_options_root = bpy.context.window_manager.dd_import
     return root_property
 
 
@@ -1427,7 +1427,7 @@ def register():
             logger.debug(f"{cls.__name__} : already registred")
 
     ## Property Group の登録
-    bpy.types.WindowManager.ddfbx_importer = bpy.props.PointerProperty(type=DDIMPORT_WM_import_options_root)
+    bpy.types.WindowManager.dd_import = bpy.props.PointerProperty(type=DDIMPORT_WM_import_options_root)
 
     # デバッグ用
     # launch_debug_server()
@@ -1435,7 +1435,7 @@ def register():
 
 def unregister():
     # Property Group の削除
-    del bpy.types.WindowManager.ddfbx_importer
+    del bpy.types.WindowManager.dd_import
     for cls in CLASSES:
         if hasattr(bpy.types, cls.__name__):
             bpy.utils.unregister_class(cls)
