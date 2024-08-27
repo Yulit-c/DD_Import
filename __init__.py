@@ -1191,7 +1191,7 @@ class DDIMPORT_OT_better_fbx_import(DDIMPORT_ImportOperatorBase, DDIMPORT_Better
     bl_idname = "ddimport.better_fbx_import"
     bl_label = "Better FBX Import"
     bl_description = ""
-    bl_options = {"UNDO", "INTERNAL", "PRESET"}
+    bl_options = {"INTERNAL", "PRESET"}
 
     # ----------------------------------------------------------
     #    for File Handler
@@ -1311,7 +1311,7 @@ class DDIMPORT_OT_vrm_import(DDIMPORT_ImportOperatorBase):
     bl_idname = "ddimport.vrm"
     bl_label = "VRM Import"
     bl_description = ""
-    bl_options = {"UNDO", "INTERNAL", "PRESET"}
+    bl_options = {"INTERNAL", "PRESET"}
 
     # ----------------------------------------------------------
     #    for File Handler
@@ -1345,6 +1345,7 @@ class DDIMPORT_OT_import(bpy.types.Operator):
 
     fbx_files: list[str] = []
     vrm_files: list[str] = []
+    export_completed: bool = False
 
     @classmethod
     def poll(cls, context):
@@ -1354,6 +1355,11 @@ class DDIMPORT_OT_import(bpy.types.Operator):
         import os
 
         os.system("cls")
+        # メンバ変数の初期化
+        export_completed: bool = False
+        self.fbx_files.clear()
+        self.vrm_files.clear()
+        # 読み込み対象ファイルをそれぞれリストに追加する
         for i in self.files.keys():
             i: str
             extension = i.split(".")[1].lower()
@@ -1390,10 +1396,15 @@ class DDIMPORT_OT_import(bpy.types.Operator):
                     bpy.ops.ddimport.better_fbx_import(
                         exec_context, directory=self.directory, files=str(self.fbx_files)
                     )
+            self.export_completed = True
 
         if self.vrm_files:
             logger.debug(f"\n{'':#>10}\n\VRM Import\n{'':#>10}")
             bpy.ops.ddimport.vrm(directory=self.directory, files=str(self.vrm_files))
+            self.export_completed = True
+
+        if self.export_completed:
+            bpy.ops.ed.undo_push(message="DD Import")
 
         return {"FINISHED"}
 
