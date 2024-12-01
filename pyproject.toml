@@ -1,0 +1,15 @@
+[tool.poetry]
+name = "dd-import"
+version = "0.1.0"
+description = ""
+authors = ["Yulit-c <18331487+Yulit-c@users.noreply.github.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.12"
+fake-bpy-module-latest = "^20241011"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
