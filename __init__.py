@@ -56,7 +56,9 @@ logger = preparating_logger(__name__)
     Variables
 ------------------------------------------------------------
 ---------------------------------------------------------"""
-presets_directory: Path = Path(bpy.utils.resource_path("USER")).joinpath("scripts", "presets", "DDImport")
+presets_directory: Path = Path(bpy.utils.resource_path("USER")).joinpath(
+    "scripts", "presets", "DDImport"
+)
 
 
 """---------------------------------------------------------
@@ -104,11 +106,16 @@ class PropertyGroupBase(bpy.types.PropertyGroup):
             case 1:
                 importer_prop = get_wm_better_fbx_property_group()
         # 取得したプロパティグループの全てのフィールドの値を辞書として取得する
-        [dic_op_parameters.setdefault(k, getattr(importer_prop, k)) for k in [*importer_prop.__annotations__]]
+        [
+            dic_op_parameters.setdefault(k, getattr(importer_prop, k))
+            for k in [*importer_prop.__annotations__]
+        ]
         return dic_op_parameters
 
     def set_parameters(
-        self, target_object: bpy.types.Operator | bpy.types.PropertyGroup, parameters: dict[Any]
+        self,
+        target_object: bpy.types.Operator | bpy.types.PropertyGroup,
+        parameters: dict[Any],
     ):
         # 取得したパラメーターをOperatorまたはPropertyGroupの値にセットする｡
         for k, v in parameters.items():
@@ -296,7 +303,10 @@ class DDIMPORT_BetterFBXPropertyGroup(PropertyGroupBase):
     my_leaf_bone: bpy.props.EnumProperty(
         name="Leaf Bone",
         description="The length of leaf bone",
-        items=(("Long", "Long", "1/1 length of its parent"), ("Short", "Short", "1/10 length of its parent")),
+        items=(
+            ("Long", "Long", "1/1 length of its parent"),
+            ("Short", "Short", "1/10 length of its parent"),
+        ),
         default="Long",
     )
 
@@ -418,7 +428,11 @@ class DDIMPORT_BetterFBXPropertyGroup(PropertyGroupBase):
         name="Shading",
         description="How to render and display faces",
         items=(
-            ("Smooth", "Smooth", "Render and display faces smooth, using interpolated vertex normals"),
+            (
+                "Smooth",
+                "Smooth",
+                "Render and display faces smooth, using interpolated vertex normals",
+            ),
             ("Flat", "Flat", "Render and display faces uniform, using face normals"),
         ),
         default="Smooth",
@@ -466,8 +480,16 @@ class DDIMPORT_BetterFBXPropertyGroup(PropertyGroupBase):
         items=(
             ("None", "None", "Does not generate smoothing groups"),
             ("Import", "Import From File", "Import smoothing groups from file"),
-            ("FBXSDK", "Generate By FBX SDK", "Generate smoothing groups from normals by FBX SDK"),
-            ("Blender", "Generate By Blender", "Generate smoothing groups from normals by Blender"),
+            (
+                "FBXSDK",
+                "Generate By FBX SDK",
+                "Generate smoothing groups from normals by FBX SDK",
+            ),
+            (
+                "Blender",
+                "Generate By Blender",
+                "Generate smoothing groups from normals by Blender",
+            ),
         ),
         default="FBXSDK",
     )
@@ -549,7 +571,9 @@ class DDIMPORT_WM_better_fbx_pref_parameters(DDIMPORT_BetterFBXPropertyGroup):
     pass
 
 
-class DDIMPORT_PREF_addon_preference(bpy.types.AddonPreferences, bpy.types.PropertyGroup):
+class DDIMPORT_PREF_addon_preference(
+    bpy.types.AddonPreferences, bpy.types.PropertyGroup
+):
     bl_idname = __package__
 
     def get_item_list(scene, context) -> list[tuple[str]]:
@@ -610,10 +634,13 @@ class DDIMPORT_PREF_addon_preference(bpy.types.AddonPreferences, bpy.types.Prope
             # ----------------------------------------------------------
             row = layout.row()
             built_in_props: DDIMPORT_BuiltInPropertyGroup = self.built_in
-            header, panel_root = row.panel("DDFBX_Pref_Built-In_Props", default_closed=True)
+            header, panel_root = row.panel(
+                "DDFBX_Pref_Built-In_Props", default_closed=True
+            )
             header.label(text="Built-In Auto Import Options")
             op: DDIMPORT_OT_reset_auto_import_parameters = row.operator(
-                DDIMPORT_OT_reset_auto_import_parameters.bl_idname, text="Reset to Default"
+                DDIMPORT_OT_reset_auto_import_parameters.bl_idname,
+                text="Reset to Default",
             )
             op.target = 0
 
@@ -623,7 +650,9 @@ class DDIMPORT_PREF_addon_preference(bpy.types.AddonPreferences, bpy.types.Prope
             # Include
             row = col.row(align=True)
             row.separator(factor=2.0)
-            header, panel = row.panel("DDFBX_Pref_Built-In_Props_Include", default_closed=False)
+            header, panel = row.panel(
+                "DDFBX_Pref_Built-In_Props_Include", default_closed=False
+            )
             header.label(text="Include")
             if panel:
                 panel.label(text="")
@@ -639,7 +668,9 @@ class DDIMPORT_PREF_addon_preference(bpy.types.AddonPreferences, bpy.types.Prope
             # Transform
             row = panel_root.row(align=True)
             row.separator(factor=2.0)
-            header, panel = row.panel("DDFBX_Pref_Built-In_Props_Transform", default_closed=False)
+            header, panel = row.panel(
+                "DDFBX_Pref_Built-In_Props_Transform", default_closed=False
+            )
             header.label(text="Transform")
             if panel:
                 panel.label(text="")
@@ -653,7 +684,9 @@ class DDIMPORT_PREF_addon_preference(bpy.types.AddonPreferences, bpy.types.Prope
             # Manual Orientation
             row = panel_root.row(align=True)
             row.separator(factor=2.0)
-            header, panel = row.panel("DDFBX_Pref_Built-In_Props_Orientation", default_closed=False)
+            header, panel = row.panel(
+                "DDFBX_Pref_Built-In_Props_Orientation", default_closed=False
+            )
             header.label(text="Manual Orientation")
             if panel:
                 panel.label(text="")
@@ -668,7 +701,9 @@ class DDIMPORT_PREF_addon_preference(bpy.types.AddonPreferences, bpy.types.Prope
             # Animation
             row = panel_root.row(align=True)
             row.separator(factor=2.0)
-            header, panel = row.panel("DDFBX_Pref_Built-In_Props_Animation", default_closed=False)
+            header, panel = row.panel(
+                "DDFBX_Pref_Built-In_Props_Animation", default_closed=False
+            )
             header.label(text="Animation")
             if panel:
                 panel.label(text="")
@@ -683,7 +718,9 @@ class DDIMPORT_PREF_addon_preference(bpy.types.AddonPreferences, bpy.types.Prope
             # Armature
             row = panel_root.row(align=True)
             row.separator(factor=2.0)
-            header, panel = row.panel("DDFBX_Pref_Built-In_Props_Armature", default_closed=False)
+            header, panel = row.panel(
+                "DDFBX_Pref_Built-In_Props_Armature", default_closed=False
+            )
             header.label(text="Armature")
             if panel:
                 panel.label(text="")
@@ -701,10 +738,13 @@ class DDIMPORT_PREF_addon_preference(bpy.types.AddonPreferences, bpy.types.Prope
             if "better_fbx" in get_enabled_addon_list():
                 better_fbx_props: DDIMPORT_BetterFBXPropertyGroup = self.better_fbx
                 row = layout.row()
-                header, panel_root = row.panel("DDFBX_Pref_BetterFBX_Props", default_closed=True)
+                header, panel_root = row.panel(
+                    "DDFBX_Pref_BetterFBX_Props", default_closed=True
+                )
                 header.label(text="BetterFBX Auto Import Options")
                 op: DDIMPORT_OT_reset_auto_import_parameters = row.operator(
-                    DDIMPORT_OT_reset_auto_import_parameters.bl_idname, text="Reset to Default"
+                    DDIMPORT_OT_reset_auto_import_parameters.bl_idname,
+                    text="Reset to Default",
                 )
                 op.target = 1
                 if panel_root:
@@ -713,7 +753,9 @@ class DDIMPORT_PREF_addon_preference(bpy.types.AddonPreferences, bpy.types.Prope
                     # Include
                     row = col.row(align=True)
                     row.separator(factor=2.0)
-                    header, panel = row.panel("DDFBX_Pref_BetterFBX_Props_Basic", default_closed=False)
+                    header, panel = row.panel(
+                        "DDFBX_Pref_BetterFBX_Props_Basic", default_closed=False
+                    )
                     header.label(text="Basic Options")
                     if panel:
                         panel.label(text="")
@@ -727,7 +769,9 @@ class DDIMPORT_PREF_addon_preference(bpy.types.AddonPreferences, bpy.types.Prope
 
                     row = panel_root.row(align=True)
                     row.separator(factor=2.0)
-                    header, panel = row.panel("DDFBX_Pref_BetterFBX_Props_Blender", default_closed=False)
+                    header, panel = row.panel(
+                        "DDFBX_Pref_BetterFBX_Props_Blender", default_closed=False
+                    )
                     header.label(text="Blender Options")
                     if panel:
                         panel.label(text="")
@@ -741,7 +785,9 @@ class DDIMPORT_PREF_addon_preference(bpy.types.AddonPreferences, bpy.types.Prope
 
                     row = panel_root.row(align=True)
                     row.separator(factor=2.0)
-                    header, panel = row.panel("DDFBX_Pref_BetterFBX_Props_Bone", default_closed=False)
+                    header, panel = row.panel(
+                        "DDFBX_Pref_BetterFBX_Props_Bone", default_closed=False
+                    )
                     header.label(text="Bone Options")
                     if panel:
                         panel.label(text="")
@@ -764,7 +810,9 @@ class DDIMPORT_PREF_addon_preference(bpy.types.AddonPreferences, bpy.types.Prope
 
                     row = panel_root.row(align=True)
                     row.separator(factor=2.0)
-                    header, panel = row.panel("DDFBX_Pref_BetterFBX_Props_Animation", default_closed=False)
+                    header, panel = row.panel(
+                        "DDFBX_Pref_BetterFBX_Props_Animation", default_closed=False
+                    )
                     header.label(text="Animation Options")
                     if panel:
                         panel.label(text="")
@@ -775,7 +823,9 @@ class DDIMPORT_PREF_addon_preference(bpy.types.AddonPreferences, bpy.types.Prope
 
                     row = panel_root.row(align=True)
                     row.separator(factor=2.0)
-                    header, panel = row.panel("DDFBX_Pref_BetterFBX_Props_VertAnim", default_closed=False)
+                    header, panel = row.panel(
+                        "DDFBX_Pref_BetterFBX_Props_VertAnim", default_closed=False
+                    )
                     header.label(text="Vertex Animation Options")
                     if panel:
                         panel.label(text="")
@@ -783,7 +833,9 @@ class DDIMPORT_PREF_addon_preference(bpy.types.AddonPreferences, bpy.types.Prope
 
                     row = panel_root.row(align=True)
                     row.separator(factor=2.0)
-                    header, panel = row.panel("DDFBX_Pref_BetterFBX_Props_Material", default_closed=False)
+                    header, panel = row.panel(
+                        "DDFBX_Pref_BetterFBX_Props_Material", default_closed=False
+                    )
                     header.label(text="Material Options")
                     if panel:
                         panel.label(text="")
@@ -791,7 +843,9 @@ class DDIMPORT_PREF_addon_preference(bpy.types.AddonPreferences, bpy.types.Prope
 
                     row = panel_root.row(align=True)
                     row.separator(factor=2.0)
-                    header, panel = row.panel("DDFBX_Pref_BetterFBX_Props_Mesh", default_closed=False)
+                    header, panel = row.panel(
+                        "DDFBX_Pref_BetterFBX_Props_Mesh", default_closed=False
+                    )
                     header.label(text="Mesh Options")
                     if panel:
                         panel.label(text="")
@@ -802,7 +856,9 @@ class DDIMPORT_PREF_addon_preference(bpy.types.AddonPreferences, bpy.types.Prope
 
                     row = panel_root.row(align=True)
                     row.separator(factor=2.0)
-                    header, panel = row.panel("DDFBX_Pref_BetterFBX_Props_Edge", default_closed=False)
+                    header, panel = row.panel(
+                        "DDFBX_Pref_BetterFBX_Props_Edge", default_closed=False
+                    )
                     header.label(text="Edge Options")
                     if panel:
                         panel.label(text="")
@@ -824,7 +880,9 @@ def get_addon_preferences() -> DDIMPORT_PREF_addon_preference:
     """
 
     splitted_package_name = __package__.split(".")[0]
-    addon_preferences = bpy.context.preferences.addons[splitted_package_name].preferences
+    addon_preferences = bpy.context.preferences.addons[
+        splitted_package_name
+    ].preferences
 
     return addon_preferences
 
@@ -886,7 +944,9 @@ class DDIMPORT_WM_import_options_root(bpy.types.PropertyGroup):
 
 
 def get_wm_root_property_group() -> DDIMPORT_WM_import_options_root:
-    root_property: DDIMPORT_WM_import_options_root = bpy.context.window_manager.dd_import
+    root_property: DDIMPORT_WM_import_options_root = (
+        bpy.context.window_manager.ddfbx_importer
+    )
     return root_property
 
 
@@ -973,7 +1033,9 @@ class DDIMPORT_ImportOperatorBase(bpy.types.Operator):
         return file_path
 
 
-class DDIMPORT_OT_built_in_import(DDIMPORT_ImportOperatorBase, DDIMPORT_BuiltInPropertyGroup):
+class DDIMPORT_OT_built_in_import(
+    DDIMPORT_ImportOperatorBase, DDIMPORT_BuiltInPropertyGroup
+):
     bl_idname = "ddimport.built_in_import"
     bl_label = "Built-In Import"
     bl_description = ""
@@ -1032,11 +1094,15 @@ class DDIMPORT_OT_built_in_import(DDIMPORT_ImportOperatorBase, DDIMPORT_BuiltInP
         box = layout.box()
         row = box.row(align=True)
         if not self.expand_include:
-            row.prop(self, "expand_include", icon="TRIA_RIGHT", icon_only=True, emboss=False)
+            row.prop(
+                self, "expand_include", icon="TRIA_RIGHT", icon_only=True, emboss=False
+            )
             row.separator(factor=2.0)
             row.label(text="Include")
         else:
-            row.prop(self, "expand_include", icon="TRIA_DOWN", icon_only=True, emboss=False)
+            row.prop(
+                self, "expand_include", icon="TRIA_DOWN", icon_only=True, emboss=False
+            )
             row.separator(factor=2.0)
             row.label(text="Include")
             row = box.row(align=True)
@@ -1059,11 +1125,19 @@ class DDIMPORT_OT_built_in_import(DDIMPORT_ImportOperatorBase, DDIMPORT_BuiltInP
         box = layout.box()
         row = box.row(align=True)
         if not self.expand_transform:
-            row.prop(self, "expand_transform", icon="TRIA_RIGHT", icon_only=True, emboss=False)
+            row.prop(
+                self,
+                "expand_transform",
+                icon="TRIA_RIGHT",
+                icon_only=True,
+                emboss=False,
+            )
             row.separator(factor=2.0)
             row.label(text="Transform")
         else:
-            row.prop(self, "expand_transform", icon="TRIA_DOWN", icon_only=True, emboss=False)
+            row.prop(
+                self, "expand_transform", icon="TRIA_DOWN", icon_only=True, emboss=False
+            )
             row.separator(factor=2.0)
             row.label(text="Transform")
             row = box.row(align=True)
@@ -1084,11 +1158,23 @@ class DDIMPORT_OT_built_in_import(DDIMPORT_ImportOperatorBase, DDIMPORT_BuiltInP
         box = layout.box()
         row = box.row(align=True)
         if not self.expand_orientation:
-            row.prop(self, "expand_orientation", icon="TRIA_RIGHT", icon_only=True, emboss=False)
+            row.prop(
+                self,
+                "expand_orientation",
+                icon="TRIA_RIGHT",
+                icon_only=True,
+                emboss=False,
+            )
             row.prop(self, "use_manual_orientation", text="")
             row.label(text="Manual Orientation")
         else:
-            row.prop(self, "expand_orientation", icon="TRIA_DOWN", icon_only=True, emboss=False)
+            row.prop(
+                self,
+                "expand_orientation",
+                icon="TRIA_DOWN",
+                icon_only=True,
+                emboss=False,
+            )
             row.prop(self, "use_manual_orientation", text="")
             row.label(text="Manual Orientation")
             row = box.row(align=True)
@@ -1107,11 +1193,19 @@ class DDIMPORT_OT_built_in_import(DDIMPORT_ImportOperatorBase, DDIMPORT_BuiltInP
         box = layout.box()
         row = box.row(align=True)
         if not self.expand_animation:
-            row.prop(self, "expand_animation", icon="TRIA_RIGHT", icon_only=True, emboss=False)
+            row.prop(
+                self,
+                "expand_animation",
+                icon="TRIA_RIGHT",
+                icon_only=True,
+                emboss=False,
+            )
             row.prop(self, "use_anim", text="")
             row.label(text="Animation")
         else:
-            row.prop(self, "expand_animation", icon="TRIA_DOWN", icon_only=True, emboss=False)
+            row.prop(
+                self, "expand_animation", icon="TRIA_DOWN", icon_only=True, emboss=False
+            )
             row.prop(self, "use_anim", text="")
             row.label(text="Animation")
             row = box.row(align=True)
@@ -1129,12 +1223,16 @@ class DDIMPORT_OT_built_in_import(DDIMPORT_ImportOperatorBase, DDIMPORT_BuiltInP
         box = layout.box()
         row = box.row(align=True)
         if not self.expand_armature:
-            row.prop(self, "expand_armature", icon="TRIA_RIGHT", icon_only=True, emboss=False)
+            row.prop(
+                self, "expand_armature", icon="TRIA_RIGHT", icon_only=True, emboss=False
+            )
             row.separator(2.0)
             row.label(text="Armature")
         else:
             row.label(text="", icon="TRIA_DOWN")
-            row.prop(self, "expand_armature", icon="TRIA_DOWN", icon_only=True, emboss=False)
+            row.prop(
+                self, "expand_armature", icon="TRIA_DOWN", icon_only=True, emboss=False
+            )
             row.label(text="Armature")
             row = box.row(align=True)
             row.separator(factor=3.0)
@@ -1187,11 +1285,13 @@ class DDIMPORT_OT_built_in_import(DDIMPORT_ImportOperatorBase, DDIMPORT_BuiltInP
         return {"FINISHED"}
 
 
-class DDIMPORT_OT_better_fbx_import(DDIMPORT_ImportOperatorBase, DDIMPORT_BetterFBXPropertyGroup):
+class DDIMPORT_OT_better_fbx_import(
+    DDIMPORT_ImportOperatorBase, DDIMPORT_BetterFBXPropertyGroup
+):
     bl_idname = "ddimport.better_fbx_import"
     bl_label = "Better FBX Import"
     bl_description = ""
-    bl_options = {"INTERNAL", "PRESET"}
+    bl_options = {"UNDO", "INTERNAL", "PRESET"}
 
     # ----------------------------------------------------------
     #    for File Handler
@@ -1311,7 +1411,7 @@ class DDIMPORT_OT_vrm_import(DDIMPORT_ImportOperatorBase):
     bl_idname = "ddimport.vrm"
     bl_label = "VRM Import"
     bl_description = ""
-    bl_options = {"INTERNAL", "PRESET"}
+    bl_options = {"UNDO", "INTERNAL", "PRESET"}
 
     # ----------------------------------------------------------
     #    for File Handler
@@ -1341,28 +1441,29 @@ class DDIMPORT_OT_import(bpy.types.Operator):
     bl_options = {"INTERNAL"}
 
     directory: bpy.props.StringProperty(subtype="FILE_PATH", options={"SKIP_SAVE"})
-    files: bpy.props.CollectionProperty(type=bpy.types.OperatorFileListElement, options={"SKIP_SAVE"})
+    files: bpy.props.CollectionProperty(
+        type=bpy.types.OperatorFileListElement, options={"SKIP_SAVE"}
+    )
 
     fbx_files: list[str] = []
     vrm_files: list[str] = []
-    export_completed: bool = False
 
     @classmethod
     def poll(cls, context):
         return context.area and context.area.type == "VIEW_3D"
 
     def execute(self, context):
-        import os
+        print("")
+        self.fbx_files = []
+        self.fbx_files = []
 
-        os.system("cls")
-        # メンバ変数の初期化
-        export_completed: bool = False
-        self.fbx_files.clear()
-        self.vrm_files.clear()
-        # 読み込み対象ファイルをそれぞれリストに追加する
+        logger.debug(self.directory)
+        logger.debug(self.files)
         for i in self.files.keys():
             i: str
-            extension = i.split(".")[1].lower()
+            logger.debug(i)
+            extension = i.rsplit(sep=".", maxsplit=1)[1].lower()
+            logger.debug(extension)
             match extension:
                 case "fbx":
                     self.fbx_files.append(i)
@@ -1386,25 +1487,24 @@ class DDIMPORT_OT_import(bpy.types.Operator):
 
         # Preferenceで選択されたインポーターに応じたオペレーターを実行する｡
         if self.fbx_files:
-            logger.debug(f"\n{'':#>10}\nFBX Import\n{'':#>10}")
+            print(f"\n{'':#>10}\nFBX Import\n{'':#>10}")
             match int(selected_importer):
                 case 0:  # Built-In
                     bpy.ops.ddimport.built_in_import(
-                        exec_context, directory=self.directory, files=str(self.fbx_files)
+                        exec_context,
+                        directory=self.directory,
+                        files=str(self.fbx_files),
                     )
                 case 1:  # Better FBX
                     bpy.ops.ddimport.better_fbx_import(
-                        exec_context, directory=self.directory, files=str(self.fbx_files)
+                        exec_context,
+                        directory=self.directory,
+                        files=str(self.fbx_files),
                     )
-            self.export_completed = True
 
         if self.vrm_files:
             logger.debug(f"\n{'':#>10}\n\VRM Import\n{'':#>10}")
             bpy.ops.ddimport.vrm(directory=self.directory, files=str(self.vrm_files))
-            self.export_completed = True
-
-        if self.export_completed:
-            bpy.ops.ed.undo_push(message="DD Import")
 
         return {"FINISHED"}
 
@@ -1438,7 +1538,9 @@ def register():
             logger.debug(f"{cls.__name__} : already registred")
 
     ## Property Group の登録
-    bpy.types.WindowManager.dd_import = bpy.props.PointerProperty(type=DDIMPORT_WM_import_options_root)
+    bpy.types.WindowManager.ddfbx_importer = bpy.props.PointerProperty(
+        type=DDIMPORT_WM_import_options_root
+    )
 
     # デバッグ用
     # launch_debug_server()
@@ -1446,7 +1548,7 @@ def register():
 
 def unregister():
     # Property Group の削除
-    del bpy.types.WindowManager.dd_import
+    del bpy.types.WindowManager.ddfbx_importer
     for cls in CLASSES:
         if hasattr(bpy.types, cls.__name__):
             bpy.utils.unregister_class(cls)
